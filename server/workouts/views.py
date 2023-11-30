@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from rest_framework import generics as rest_generic_views, status, serializers
 from rest_framework.response import Response
 
@@ -9,6 +10,7 @@ from server.workouts.serializers import WorkoutPlanSerializer, ExerciseSerialize
 class SearchExerciseView(rest_generic_views.ListAPIView):
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
+
     def get(self, request, *args, **kwargs):
         profile = request.user.profile
         searched_name = request.query_params.get('exercise_name')
@@ -22,16 +24,18 @@ class SearchExerciseView(rest_generic_views.ListAPIView):
         }, status=status.HTTP_200_OK)
 
 
-
-
-
 class CreateWorkoutPlanView(rest_generic_views.CreateAPIView):
     queryset = WorkoutPlan
     serializer_class = WorkoutPlanSerializer
 
     def post(self, request, *args, **kwargs):
-        user = request.user
-        user_profile = request.user.profile
+
+        try:
+            WorkoutPlan.create_workout_plan(request=request, workout_plan_data=request.data)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ValidationError as error:
+            return Response(error.message,
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 class CreateExerciseView(rest_generic_views.CreateAPIView):

@@ -42,10 +42,13 @@ class CustomUserManager(BaseUserManager):
     #     confirmation.delete()
     #     return True
 
+
 class AppUser(AbstractBaseUser, PermissionsMixin):
     MAX_LEN_USERNAME = 30
 
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, error_messages={
+        'unique': "A user with this email already exists. "
+    })
     username = models.CharField(
         max_length=MAX_LEN_USERNAME,
         unique=True
@@ -81,7 +84,6 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
 
 
 UserModel = get_user_model()
-
 
 # class ConfirmationCode(models.Model):
 #     MAX_LEN_CODE = 6

@@ -6,7 +6,6 @@ UserModel = get_user_model()
 
 
 class LoginSerializer(serializers.Serializer):
-
     email_or_username = serializers.CharField(required=True)
     password = serializers.CharField(required=True)
 
@@ -41,8 +40,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         password = validated_data['password']
 
         user = UserModel.objects.create_user(
-            email=email,
-            username=username,
+            email=email.lower(),
+            username=username.lower(),
             password=password,
         )
 
@@ -59,6 +58,21 @@ class RegisterSerializer(serializers.ModelSerializer):
         if errors:
             raise serializers.ValidationError(errors)
         return super().validate(data)
+
+    def validate_email(self, value):
+        lowercased_email = value.lower()
+        existing_user = UserModel.objects.filter(email__iexact=lowercased_email)
+        if existing_user.exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+
+        return lowercased_email
+
+    def validate_username(self, value):
+        lowercased_username = value.lower()
+        existing_user = UserModel.objects.filter(username__iexact=lowercased_username)
+        if existing_user.exists():
+            raise serializers.ValidationError("A user with this username already exists.")
+        return lowercased_username
 
     def to_representation(self, instance):
         user_representation = super().to_representation(instance)
