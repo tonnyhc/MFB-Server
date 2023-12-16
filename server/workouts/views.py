@@ -4,7 +4,29 @@ from rest_framework.response import Response
 
 from server.profiles.models import Profile
 from server.workouts.models import WorkoutPlan, Exercise
-from server.workouts.serializers import WorkoutPlanSerializer, ExerciseSerializer
+from server.workouts.serializers import BaseWorkoutPlanSerializer, ExerciseSerializer, WorkoutPlanDetailsSerializer
+
+
+class WorkoutsByUserListView(rest_generic_views.ListAPIView):
+    queryset = WorkoutPlan.objects.all()
+    serializer_class = BaseWorkoutPlanSerializer
+    def get(self, request, *args, **kwargs):
+        query = self.queryset.filter(created_by_id=request.user.profile.id)
+        serialized_query = self.serializer_class(query, many=True)
+        return Response(serialized_query.data, status=status.HTTP_200_OK)
+
+
+class WorkoutPlanDetailsView(rest_generic_views.RetrieveAPIView):
+    queryset = WorkoutPlan.objects.all()
+    serializer_class = WorkoutPlanDetailsSerializer
+
+    def get(self, request, *args, **kwargs):
+        params_id = kwargs['id']
+        query = self.queryset.get(id=params_id)
+        serialized_query = self.serializer_class(query)
+        return Response(serialized_query.data, status=status.HTTP_200_OK)
+
+
 
 
 class SearchExerciseView(rest_generic_views.ListAPIView):
@@ -26,7 +48,7 @@ class SearchExerciseView(rest_generic_views.ListAPIView):
 
 class CreateWorkoutPlanView(rest_generic_views.CreateAPIView):
     queryset = WorkoutPlan
-    serializer_class = WorkoutPlanSerializer
+    serializer_class = BaseWorkoutPlanSerializer
 
     def post(self, request, *args, **kwargs):
 
