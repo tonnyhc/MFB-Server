@@ -6,7 +6,7 @@ from server.profiles.models import Profile
 from server.profiles.serializers import BaseProfileSerializer
 
 
-class LogedInProfileDetailsView(rest_generic_views.RetrieveAPIView):
+class LoggedInProfileDetailsView(rest_generic_views.RetrieveAPIView):
     serializer_class = BaseProfileSerializer
     def get(self, request, *args, **kwargs):
         try:

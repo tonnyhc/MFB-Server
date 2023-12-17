@@ -1,7 +1,7 @@
 from django.urls import path
 
-from server.profiles.views import LogedInProfileDetailsView
+from server.profiles.views import LoggedInProfileDetailsView
 
 urlpatterns = [
-    path('user-profile/', LogedInProfileDetailsView.as_view(), name='logged in profile details'),
+    path('user-profile/', LoggedInProfileDetailsView.as_view(), name='logged in profile details'),
 ]

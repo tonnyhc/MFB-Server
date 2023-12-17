@@ -1,8 +1,10 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model, login, authenticate
 from rest_framework import generics as rest_generic_views, views as rest_views, status
 from rest_framework.authtoken import views as authtoken_views
 from rest_framework.authtoken import models as authtoken_models
 from rest_framework.response import Response
+from django.core.mail import send_mail
 
 from server.authentication.serializers import LoginSerializer, RegisterSerializer
 from server.profiles.models import Profile
@@ -23,10 +25,14 @@ class LoginView(authtoken_views.ObtainAuthToken):
         user = serializer.validated_data['user']
         token, created = authtoken_models.Token.objects.get_or_create(user=user)
 
+        send_mail(subject='Add an eye-catching subject',
+                  message='Write an amazing message',
+                  from_email=settings.EMAIL_HOST_USER,
+                  recipient_list=['smokercho56@gmail.com'])
         return Response({
-            'user_id': user.pk,
-            'username': user.username,
-            'email': user.email,
+            # 'user_id': user.pk,
+            # 'username': user.username,
+            # 'email': user.email,
             'token': token.key,
         })
 

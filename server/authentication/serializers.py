@@ -6,7 +6,7 @@ UserModel = get_user_model()
 
 
 class LoginSerializer(serializers.Serializer):
-    email_or_username = serializers.CharField(required=True)
+    email = serializers.CharField(required=True)
     password = serializers.CharField(required=True)
 
     class Meta:
@@ -14,13 +14,16 @@ class LoginSerializer(serializers.Serializer):
         fields = ('__all__')
 
     def validate(self, attrs):
-        email_or_username = attrs.get('email_or_username')
+        # email_or_username = attrs.get('email_or_username')
+        email = attrs.get('email')
         password = attrs.get('password')
 
-        if "@" in email_or_username:
-            user = authenticate(request=self.context['request'], email=email_or_username, password=password)
-        else:
-            user = authenticate(request=self.context['request'], username=email_or_username, password=password)
+        user = authenticate(request=self.context['request'], email=email, password=password)
+
+        # if "@" in email_or_username:
+        #     user = authenticate(request=self.context['request'], email=email_or_username, password=password)
+        # else:
+        #     user = authenticate(request=self.context['request'], username=email_or_username, password=password)
 
         if not user:
             raise serializers.ValidationError('Invalid email/username or password')

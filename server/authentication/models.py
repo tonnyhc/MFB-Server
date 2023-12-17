@@ -54,7 +54,7 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
         unique=True
     )
     is_active = models.BooleanField(default=True)
-    # is_confirmed = models.BooleanField(default=False)
+    # is_verified = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
     groups = models.ManyToManyField(
