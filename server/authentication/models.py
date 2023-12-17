@@ -25,22 +25,22 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_active', True)
         return self.create_user(email, password, **extra_fields)
 
-    # def confirm_email(self, user, code):
-    #     if not user:
-    #         return False
-    #
-    #     try:
-    #         confirmation = user.confirmationcode_set.latest('created_at')
-    #     except ConfirmationCode.DoesNotExist:
-    #         return False
-    #
-    #     if confirmation.code != code:
-    #         return False
-    #
-    #     user.is_confirmed = True
-    #     user.save()
-    #     confirmation.delete()
-    #     return True
+    def confirm_email(self, user, code):
+        if not user:
+            return False
+
+        try:
+            confirmation = user.confirmationcode_set.latest('created_at')
+        except ConfirmationCode.DoesNotExist:
+            return False
+
+        if confirmation.code != code:
+            return False
+
+        user.is_verified = True
+        user.save()
+        confirmation.delete()
+        return True
 
 
 class AppUser(AbstractBaseUser, PermissionsMixin):
@@ -54,7 +54,7 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
         unique=True
     )
     is_active = models.BooleanField(default=True)
-    # is_verified = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
     groups = models.ManyToManyField(
@@ -85,11 +85,11 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
 
 UserModel = get_user_model()
 
-# class ConfirmationCode(models.Model):
-#     MAX_LEN_CODE = 6
-#     user = models.ForeignKey(
-#         UserModel,
-#         on_delete=models.CASCADE
-#     )
-#     code = models.CharField(max_length=MAX_LEN_CODE)
-#     created_at = models.DateTimeField(auto_now_add=True)
+class ConfirmationCode(models.Model):
+    MAX_LEN_CODE = 5
+    user = models.ForeignKey(
+        UserModel,
+        on_delete=models.CASCADE
+    )
+    code = models.CharField(max_length=MAX_LEN_CODE)
+    created_at = models.DateTimeField(auto_now_add=True)

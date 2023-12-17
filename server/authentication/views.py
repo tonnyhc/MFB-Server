@@ -25,14 +25,16 @@ class LoginView(authtoken_views.ObtainAuthToken):
         user = serializer.validated_data['user']
         token, created = authtoken_models.Token.objects.get_or_create(user=user)
 
-        send_mail(subject='Add an eye-catching subject',
-                  message='Write an amazing message',
-                  from_email=settings.EMAIL_HOST_USER,
-                  recipient_list=['smokercho56@gmail.com'])
+        # send_mail(subject='Add an eye-catching subject',
+        #           message='Write an amazing message',
+        #           from_email=settings.EMAIL_HOST_USER,
+        #           recipient_list=['smokercho56@gmail.com'])
+
         return Response({
             # 'user_id': user.pk,
             # 'username': user.username,
             # 'email': user.email,
+            'is_verified': user.is_verified,
             'token': token.key,
         })
 
@@ -46,6 +48,7 @@ class RegisterView(rest_generic_views.CreateAPIView):
     # TODO: Write some tests
     def post(self, request, *args, **kwargs):
         username_to_lower_case = request.data.get('username').lower()
+
         email_to_lower_case = request.data.get('email').lower()
         password = request.data.get('password')
         data_for_serializer = {
@@ -90,3 +93,24 @@ class LogoutView(rest_views.APIView):
             return Response({
                 'message': "No signed in user, cant perform sign-out!"
             }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ConfirmEmail(rest_views.APIView):
+
+    def post(self, request, *args, **kwargs):
+        code = request.data
+        user = request.user
+
+        if not user:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+        if not code:
+            return Response(status=status.HTTP_400_BAD_REQUEST)
+
+        confirmation = UserModel.objects.confirm_email(user, code)
+        if not confirmation:
+            return Response({
+                'message': "Failed to confirm"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'message': "Email confirmed"
+        }, status=status.HTTP_200_OK)

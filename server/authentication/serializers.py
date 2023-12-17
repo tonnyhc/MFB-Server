@@ -2,6 +2,8 @@ from django.contrib.auth import authenticate, get_user_model, password_validatio
 from django.core import exceptions
 from rest_framework import serializers
 
+from server.authentication.utils import send_confirmation_code
+
 UserModel = get_user_model()
 
 
@@ -47,6 +49,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             username=username.lower(),
             password=password,
         )
+
+        send_confirmation_code(user)
 
         return user
 
