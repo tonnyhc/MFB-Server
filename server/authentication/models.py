@@ -1,8 +1,12 @@
+from enum import Enum
+
 from django.contrib.auth import get_user_model
 from django.db import models, IntegrityError
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin, Group, Permission
 from rest_framework.exceptions import ValidationError
+
+from server.mixins import ChoicesEnumMixin
 
 
 class CustomUserManager(BaseUserManager):
@@ -30,7 +34,7 @@ class CustomUserManager(BaseUserManager):
             return False
 
         try:
-            confirmation = user.confirmationcode_set.latest('created_at')
+            confirmation = user.confirmationcode_set.get(type="AccountVerification")
         except ConfirmationCode.DoesNotExist:
             return False
 
@@ -41,6 +45,7 @@ class CustomUserManager(BaseUserManager):
         user.save()
         confirmation.delete()
         return True
+
 
 
 class AppUser(AbstractBaseUser, PermissionsMixin):
@@ -85,6 +90,10 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
 
 UserModel = get_user_model()
 
+class ConfirmationCodeTypeChoices(ChoicesEnumMixin, Enum):
+    AccountVerification = 'AccountVerification'
+    ForgottenPassword = "ForgottenPassword"
+
 class ConfirmationCode(models.Model):
     MAX_LEN_CODE = 5
     user = models.ForeignKey(
@@ -93,3 +102,7 @@ class ConfirmationCode(models.Model):
     )
     code = models.CharField(max_length=MAX_LEN_CODE)
     created_at = models.DateTimeField(auto_now_add=True)
+    type = models.CharField(
+        choices=ConfirmationCodeTypeChoices.choices(),
+        max_length=ConfirmationCodeTypeChoices.max_len()
+    )

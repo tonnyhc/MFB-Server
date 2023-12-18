@@ -1,12 +1,15 @@
+import re
+
 from django.conf import settings
-from django.contrib.auth import get_user_model, login, authenticate
+from django.contrib.auth import get_user_model, login, authenticate, models
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import generics as rest_generic_views, views as rest_views, status
 from rest_framework.authtoken import views as authtoken_views
 from rest_framework.authtoken import models as authtoken_models
 from rest_framework.response import Response
-from django.core.mail import send_mail
 
 from server.authentication.serializers import LoginSerializer, RegisterSerializer
+from server.authentication.utils import send_confirmation_code_forgotten_password
 from server.profiles.models import Profile
 
 UserModel = get_user_model()
@@ -19,16 +22,17 @@ class LoginView(authtoken_views.ObtainAuthToken):
     """This view requires CSRF_TOKEN"""
 
     def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data,
+        refactored_data = {
+            **request.data,
+            'email': request.data.get('email').lower()
+        }
+        serializer = self.serializer_class(data=refactored_data,
                                            context={'request': request})
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            return Response("Invalid email/password", status=status.HTTP_400_BAD_REQUEST)
+
         user = serializer.validated_data['user']
         token, created = authtoken_models.Token.objects.get_or_create(user=user)
-
-        # send_mail(subject='Add an eye-catching subject',
-        #           message='Write an amazing message',
-        #           from_email=settings.EMAIL_HOST_USER,
-        #           recipient_list=['smokercho56@gmail.com'])
 
         return Response({
             # 'user_id': user.pk,
@@ -108,9 +112,34 @@ class ConfirmEmail(rest_views.APIView):
 
         confirmation = UserModel.objects.confirm_email(user, code)
         if not confirmation:
-            return Response({
-                'message': "Failed to confirm"
-            }, status=status.HTTP_400_BAD_REQUEST)
-        return Response({
-            'message': "Email confirmed"
-        }, status=status.HTTP_200_OK)
+            return Response("Wrong confirmation code", status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            "Email confirmed",
+            status=status.HTTP_200_OK)
+
+
+class ForgottenPasswordView(rest_views.APIView):
+    permission_classes = []
+    authentication_classes = []
+    regex = r"^[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"
+
+    def post(self, request):
+        email_from_request_data = request.data
+        email = ""
+        if email_from_request_data:
+            email = email_from_request_data.lower()
+
+        if not email or not re.match(self.regex, email):
+            return Response("Invalid email format", status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = UserModel.objects.filter(email=email).get()
+        except ObjectDoesNotExist:
+            return Response('This email is not associated to any profile', status=status.HTTP_400_BAD_REQUEST)
+
+        send_confirmation_code_forgotten_password(user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class RessetPasswordView(rest_views.APIView):
+    def post(self, request, *args, **kwargs):
+        pass
