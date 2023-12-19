@@ -1,5 +1,7 @@
 from django.contrib.auth import authenticate, get_user_model, password_validation
+from django.contrib.auth.password_validation import validate_password
 from django.core import exceptions
+from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
 from server.authentication.utils import send_confirmation_code_for_register
@@ -86,3 +88,29 @@ class RegisterSerializer(serializers.ModelSerializer):
         user_representation.pop('password')
         return user_representation
 
+
+class ConfirmVerificationCodeForPasswordResetSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    code = serializers.CharField(required=True)
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    code = serializers.CharField(required=True)
+    password = serializers.CharField(required=True)
+    re_pass = serializers.CharField(required=True)
+
+    def validate_password(self, value):
+        try:
+            validate_password(value)
+        except ValidationError as e:
+            raise serializers.ValidationError(str(e))
+
+        return value
+
+    def validate(self, data):
+        password = data.get('password')
+        re_pass = data.get('re_pass')
+        if password and re_pass and password != re_pass:
+            raise serializers.ValidationError("Passwords do not match.")
+        return data

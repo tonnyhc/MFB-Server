@@ -24,10 +24,17 @@ def send_confirmation_code_for_register(instance):
 
 def send_confirmation_code_forgotten_password(instance):
     code = ''.join(random.choices(string.digits, k=5))
-    ConfirmationCode.objects.create(user=instance, code=code, type="ForgottenPassword"),
 
-    subject = "Reset your password!"
-    message = f"Your verification code is: {code}"
-    from_email = settings.EMAIL_HOST_USER
-    recipient_list = [instance.email]
-    send_mail(subject, message, from_email, recipient_list)
+    try:
+        old_confirmation = ConfirmationCode.objects.get(user=instance, type="ForgottenPassword")
+        old_confirmation.delete()
+    except ConfirmationCode.DoesNotExist:
+
+        ConfirmationCode.objects.create(user=instance, code=code, type="ForgottenPassword"),
+
+        subject = "Reset your password!"
+        message = f"Your verification code is: {code}"
+        from_email = settings.EMAIL_HOST_USER
+        recipient_list = [instance.email]
+        send_mail(subject, message, from_email, recipient_list)
+        return True

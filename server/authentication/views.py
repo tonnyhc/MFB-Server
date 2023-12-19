@@ -8,7 +8,9 @@ from rest_framework.authtoken import views as authtoken_views
 from rest_framework.authtoken import models as authtoken_models
 from rest_framework.response import Response
 
-from server.authentication.serializers import LoginSerializer, RegisterSerializer
+from server.authentication.models import ConfirmationCode
+from server.authentication.serializers import LoginSerializer, RegisterSerializer, \
+    ConfirmVerificationCodeForPasswordResetSerializer, ResetPasswordSerializer
 from server.authentication.utils import send_confirmation_code_forgotten_password
 from server.profiles.models import Profile
 
@@ -140,6 +142,49 @@ class ForgottenPasswordView(rest_views.APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class ConfirmVerificationCodeForPasswordReset(rest_views.APIView):
+    permission_classes = []
+    authentication_classes = []
+    serializer_class = ConfirmVerificationCodeForPasswordResetSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email'].lower()
+        code = serializer.validated_data['code']
+
+        try:
+            user = UserModel.objects.filter(email=email).get()
+        except ObjectDoesNotExist:
+            return Response('The email is not associated with any profile', status=status.HTTP_400_BAD_REQUEST)
+
+        if ConfirmationCode.objects.filter(user=user, code=code, type="ForgottenPassword"):
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        return Response("Invalid verification code", status=status.HTTP_400_BAD_REQUEST)
+
+
 class RessetPasswordView(rest_views.APIView):
+    authentication_classes = []
+    permission_classes = []
+    serializer_class = ResetPasswordSerializer
+
     def post(self, request, *args, **kwargs):
-        pass
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data['email'].lower()
+        code = serializer.validated_data['code']
+        password = serializer.validated_data['password']
+
+        try:
+            user = UserModel.objects.filter(email=email).get()
+            confirmation = ConfirmationCode.objects.filter(user=user, code=code, type="ForgottenPassword")
+            user.set_password(password)
+            user.save()
+
+            confirmation.delete()
+            return Response('Password reset successfully', status=status.HTTP_200_OK)
+        except ObjectDoesNotExist:
+            return Response('A problem occurred', status=status.HTTP_400_BAD_REQUEST)
