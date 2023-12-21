@@ -1,7 +1,6 @@
 import re
 
-from django.conf import settings
-from django.contrib.auth import get_user_model, login, authenticate, models
+from django.contrib.auth import get_user_model, login
 from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import generics as rest_generic_views, views as rest_views, status
 from rest_framework.authtoken import views as authtoken_views
@@ -11,7 +10,7 @@ from rest_framework.response import Response
 from server.authentication.models import ConfirmationCode
 from server.authentication.serializers import LoginSerializer, RegisterSerializer, \
     ConfirmVerificationCodeForPasswordResetSerializer, ResetPasswordSerializer
-from server.authentication.utils import send_confirmation_code_forgotten_password
+from server.authentication.utils import send_confirmation_code_forgotten_password, send_confirmation_code_for_register
 from server.profiles.models import Profile
 
 UserModel = get_user_model()
@@ -39,7 +38,7 @@ class LoginView(authtoken_views.ObtainAuthToken):
         return Response({
             # 'user_id': user.pk,
             # 'username': user.username,
-            # 'email': user.email,
+            'email': user.email,
             'is_verified': user.is_verified,
             'token': token.key,
         })
@@ -74,8 +73,8 @@ class RegisterView(rest_generic_views.CreateAPIView):
             token, created = authtoken_models.Token.objects.get_or_create(user=user)
             return Response({
                 'token': token.key,
-                'user_id': user.pk,
-                'username': user.username,
+                # 'user_id': user.pk,
+                # 'username': user.username,
                 'email': user.email,
             }, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -118,6 +117,16 @@ class ConfirmEmail(rest_views.APIView):
         return Response(
             "Email confirmed",
             status=status.HTTP_200_OK)
+
+
+class ResentVerificationCode(rest_views.APIView):
+    def get(self, request):
+        try:
+            user = request.user
+            send_confirmation_code_for_register(user)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ObjectDoesNotExist:
+            return Response("An unexpected problem occurred.", status=status.HTTP_400_BAD_REQUEST)
 
 
 class ForgottenPasswordView(rest_views.APIView):

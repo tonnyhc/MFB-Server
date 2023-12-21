@@ -89,6 +89,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user_representation
 
 
+
+
 class ConfirmVerificationCodeForPasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     code = serializers.CharField(required=True)
