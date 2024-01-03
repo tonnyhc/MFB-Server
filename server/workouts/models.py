@@ -188,6 +188,7 @@ class WorkoutPlan(models.Model):
                 name = workout_plan_data['planName']
                 total_workouts = workout_plan_data['numberOfWorkouts']
 
+                # Plan name validation
                 if not name:
                     raise ValidationError("Provide a name for your workout plan")
 
