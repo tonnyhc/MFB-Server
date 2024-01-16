@@ -27,6 +27,11 @@ class BaseWorkoutPlanSerializer(serializers.ModelSerializer):
         return transform_timestamp(str(obj.created_at))
 
 
+class WorkoutPlanCreationSerializer(BaseWorkoutPlanSerializer):
+    class Meta(BaseWorkoutPlanSerializer.Meta):
+        fields = BaseWorkoutPlanSerializer.Meta.fields
+
+
 class WorkoutPlanDetailsSerializer(BaseWorkoutPlanSerializer):
     workouts = BaseWorkoutSessionSerializer(many=True)
 

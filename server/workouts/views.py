@@ -4,12 +4,14 @@ from rest_framework.response import Response
 
 from server.profiles.models import Profile
 from server.workouts.models import WorkoutPlan, Exercise
-from server.workouts.serializers import BaseWorkoutPlanSerializer, ExerciseSerializer, WorkoutPlanDetailsSerializer
+from server.workouts.serializers import BaseWorkoutPlanSerializer, ExerciseSerializer, WorkoutPlanDetailsSerializer, \
+    WorkoutPlanCreationSerializer
 
 
 class WorkoutsByUserListView(rest_generic_views.ListAPIView):
     queryset = WorkoutPlan.objects.all()
     serializer_class = BaseWorkoutPlanSerializer
+
     def get(self, request, *args, **kwargs):
         query = self.queryset.filter(created_by_id=request.user.profile.id)
         serialized_query = self.serializer_class(query, many=True)
@@ -27,18 +29,16 @@ class WorkoutPlanDetailsView(rest_generic_views.RetrieveAPIView):
         return Response(serialized_query.data, status=status.HTTP_200_OK)
 
 
-
-
 class SearchExerciseView(rest_generic_views.ListAPIView):
     queryset = Exercise.objects.all()
     serializer_class = ExerciseSerializer
 
     def get(self, request, *args, **kwargs):
         profile = request.user.profile
-        searched_name = request.query_params.get('exercise_name')
+        searched_name = request.query_params.get('name')
         all_exercises_by_name = self.queryset.filter(name__icontains=searched_name).all()
         exercises_created_by_user = all_exercises_by_name.filter(created_by=profile).all()
-        exercises = all_exercises_by_name.filter(created_by=None)
+        exercises = all_exercises_by_name.filter(created_by=None, is_published=True)
 
         return Response({
             'exercises_by_user': self.serializer_class(exercises_created_by_user, many=True).data,
@@ -48,10 +48,17 @@ class SearchExerciseView(rest_generic_views.ListAPIView):
 
 class CreateWorkoutPlanView(rest_generic_views.CreateAPIView):
     queryset = WorkoutPlan
-    serializer_class = BaseWorkoutPlanSerializer
+    serializer_class = WorkoutPlanCreationSerializer
+
+    @staticmethod
+    def validate_workout_plan_data(data):
+        if "workouts" not in data:
+            return Response("Workout plan must have workouts", status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request, *args, **kwargs):
-
+        validation_response = self.validate_workout_plan_data(request.data)
+        if validation_response:
+            return validation_response
         try:
             WorkoutPlan.create_workout_plan(request=request, workout_plan_data=request.data)
             return Response(status=status.HTTP_204_NO_CONTENT)
