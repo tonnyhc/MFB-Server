@@ -1,11 +1,13 @@
 from django.core.exceptions import ValidationError
 from rest_framework import generics as rest_generic_views, status, serializers
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from server.profiles.models import Profile
 from server.workouts.models import WorkoutPlan, Exercise
-from server.workouts.serializers import BaseWorkoutPlanSerializer, ExerciseSerializer, WorkoutPlanDetailsSerializer, \
-    WorkoutPlanCreationSerializer
+from server.workouts.serializers import BaseWorkoutPlanSerializer, CreateExerciseSerializer, \
+    WorkoutPlanDetailsSerializer, \
+    WorkoutPlanCreationSerializer, BaseExerciseSerializer
 
 
 class WorkoutsByUserListView(rest_generic_views.ListAPIView):
@@ -31,14 +33,14 @@ class WorkoutPlanDetailsView(rest_generic_views.RetrieveAPIView):
 
 class SearchExerciseView(rest_generic_views.ListAPIView):
     queryset = Exercise.objects.all()
-    serializer_class = ExerciseSerializer
+    serializer_class = BaseExerciseSerializer
 
     def get(self, request, *args, **kwargs):
         profile = request.user.profile
         searched_name = request.query_params.get('name')
         all_exercises_by_name = self.queryset.filter(name__icontains=searched_name).all()
         exercises_created_by_user = all_exercises_by_name.filter(created_by=profile).all()
-        exercises = all_exercises_by_name.filter(created_by=None, is_published=True)
+        exercises = all_exercises_by_name.filter(is_published=True)
 
         return Response({
             'exercises_by_user': self.serializer_class(exercises_created_by_user, many=True).data,
@@ -69,7 +71,7 @@ class CreateWorkoutPlanView(rest_generic_views.CreateAPIView):
 
 class CreateExerciseView(rest_generic_views.CreateAPIView):
     queryset = Exercise
-    serializer_class = ExerciseSerializer
+    serializer_class = CreateExerciseSerializer
 
     def perform_create(self, serializer):
         user_profile = self.request.user.profile
@@ -77,14 +79,36 @@ class CreateExerciseView(rest_generic_views.CreateAPIView):
             return Response({'There was a problem creating the exercise, are you sure you have set up your profile?'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        serializer.save(created_by=user_profile)
+        return serializer.save(created_by=user_profile)
 
     def post(self, request, *args, **kwargs):
         try:
             exercise_data = request.data
+            to_publish = request.data.get('publish')
             serializer = self.serializer_class(data=exercise_data)
             serializer.is_valid(raise_exception=True)
-            self.perform_create(serializer)
+            exercise = self.perform_create(serializer)
+            print(exercise)
+            if to_publish:
+                exercise.is_published = True
+                exercise.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except serializers.ValidationError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+"https://weighttraining.guide/wp-content/uploads/2016/10/EZ-Barbell-Curl-resized.png"
+
+@api_view(['POST'])
+def publish_exercise(exercise, exercise_id):
+    if exercise:
+        exercise.is_published = True
+        exercise.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    try:
+        exercise = Exercise.objects.filter(id=exercise_id).get()
+        exercise.is_published = True
+        exercise.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    except Exercise.DoesNotExist:
+        return Response('There was a problem publishing the exercise, as it seems to not exist.',
+                        status=status.HTTP_400_BAD_REQUEST)

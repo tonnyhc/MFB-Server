@@ -39,7 +39,12 @@ class WorkoutPlanDetailsSerializer(BaseWorkoutPlanSerializer):
         fields = BaseWorkoutPlanSerializer.Meta.fields
 
 
-class ExerciseSerializer(serializers.ModelSerializer):
+class BaseExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercise
         fields = '__all__'
+
+class CreateExerciseSerializer(BaseExerciseSerializer):
+    class Meta(BaseExerciseSerializer.Meta):
+        fields = BaseWorkoutPlanSerializer.Meta.fields
+
