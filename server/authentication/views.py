@@ -197,3 +197,10 @@ class RessetPasswordView(rest_views.APIView):
             return Response('Password reset successfully', status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
             return Response('A problem occurred', status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyAuthTokenView(rest_views.APIView):
+
+    def get(self, request):
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

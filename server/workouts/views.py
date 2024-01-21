@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from server.profiles.models import Profile
-from server.workouts.models import WorkoutPlan, Exercise
+from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession
 from server.workouts.serializers import BaseWorkoutPlanSerializer, CreateExerciseSerializer, \
     WorkoutPlanDetailsSerializer, \
     WorkoutPlanCreationSerializer, BaseExerciseSerializer
@@ -96,7 +96,6 @@ class CreateExerciseView(rest_generic_views.CreateAPIView):
         except serializers.ValidationError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-"https://weighttraining.guide/wp-content/uploads/2016/10/EZ-Barbell-Curl-resized.png"
 
 @api_view(['POST'])
 def publish_exercise(exercise, exercise_id):
@@ -112,3 +111,8 @@ def publish_exercise(exercise, exercise_id):
     except Exercise.DoesNotExist:
         return Response('There was a problem publishing the exercise, as it seems to not exist.',
                         status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+def publish_workout(request):
+    workout_id = request.query_params.get('id')
+    WorkoutSession.publish_workout(workout_id)

@@ -1,5 +1,5 @@
-from django.core.exceptions import ValidationError
-from django.db import models, transaction
+from django.core.exceptions import ValidationError, PermissionDenied
+from django.db import models, transaction, IntegrityError
 
 from server.profiles.models import Profile
 
@@ -193,6 +193,19 @@ class WorkoutSession(models.Model):
         workout_session.save()
 
         return workout_session
+
+    @staticmethod
+    def publish_workout(request, workout_id):
+        user = request.user
+        try:
+            workout = WorkoutSession.objects.get(id=workout_id)
+            if workout.created_by != user.profile:
+                raise PermissionDenied("You do not have permission to publish this workout.")
+            workout.is_published = True
+            workout.save()
+            return workout
+        except WorkoutSession.DoesNotExist:
+            raise IntegrityError("Workout does not exist.")
 
 
 class WorkoutPlan(models.Model):
