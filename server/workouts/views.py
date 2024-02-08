@@ -3,11 +3,12 @@ from rest_framework import generics as rest_generic_views, status, serializers
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
+from server.map_data import empty_set
 from server.profiles.models import Profile
-from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession
+from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, ExerciseSession, Set
 from server.workouts.serializers import BaseWorkoutPlanSerializer, CreateExerciseSerializer, \
     WorkoutPlanDetailsSerializer, \
-    WorkoutPlanCreationSerializer, BaseExerciseSerializer
+    WorkoutPlanCreationSerializer, BaseExerciseSerializer, BaseWorkoutSessionSerializer, WorkoutSessionDetailsSerializer
 
 
 class WorkoutsByUserListView(rest_generic_views.ListAPIView):
@@ -97,6 +98,44 @@ class CreateExerciseView(rest_generic_views.CreateAPIView):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class WorkoutSessionDetailsView(rest_generic_views.RetrieveAPIView):
+    queryset = WorkoutSession.objects.all()
+    serializer_class = WorkoutSessionDetailsSerializer
+
+    def get(self, request, *args, **kwargs):
+        params_id = kwargs['id']
+        filtered_query = self.queryset.filter(id=params_id).get()
+        serialized_query = self.serializer_class(filtered_query)
+
+        return Response(serialized_query.data, status=status.HTTP_200_OK)
+
+
+class AddSetToExerciseSession(rest_generic_views.CreateAPIView):
+    def post(self, request, *args, **kwargs):
+        session_id = kwargs.get('session_id')
+        try:
+            exercise_session = ExerciseSession.objects.get(id=session_id)
+            ExerciseSession.add_single_set_instance(request, exercise_session, empty_set)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ExerciseSession.DoesNotExist:
+            return Response("Invalid exercise session", status=status.HTTP_400_BAD_REQUEST)
+
+
+class RemoveSetFromExerciseSession(rest_generic_views.DestroyAPIView):
+    def post(self, request, *args, **kwargs):
+        set_id = kwargs.get('set_id')
+        try:
+            set_instance = Set.objects.get(id=set_id)
+            set_creator = set_instance.created_by
+            request_profile = request.user.profile
+            if set_creator != request_profile:
+                return Response('You can only delete your own sets.', status=status.HTTP_401_UNAUTHORIZED)
+            set_instance.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Set.DoesNotExist:
+            return Response('Cant delete not existing set.', status=status.HTTP_400_BAD_REQUEST)
+
+
 @api_view(['POST'])
 def publish_exercise(exercise, exercise_id):
     if exercise:
@@ -111,6 +150,7 @@ def publish_exercise(exercise, exercise_id):
     except Exercise.DoesNotExist:
         return Response('There was a problem publishing the exercise, as it seems to not exist.',
                         status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 def publish_workout(request):
