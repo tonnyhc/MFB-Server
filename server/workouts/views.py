@@ -1,14 +1,17 @@
 from django.core.exceptions import ValidationError
-from rest_framework import generics as rest_generic_views, status, serializers
-from rest_framework.decorators import api_view
+from rest_framework import generics as rest_generic_views, status, serializers, views
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from server.map_data import empty_set
-from server.profiles.models import Profile
+from server.utils import transform_timestamp
 from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, ExerciseSession, Set
 from server.workouts.serializers import BaseWorkoutPlanSerializer, CreateExerciseSerializer, \
     WorkoutPlanDetailsSerializer, \
-    WorkoutPlanCreationSerializer, BaseExerciseSerializer, BaseWorkoutSessionSerializer, WorkoutSessionDetailsSerializer
+    WorkoutPlanCreationSerializer, BaseExerciseSerializer, BaseWorkoutSessionSerializer, \
+    WorkoutSessionDetailsSerializer, BaseSetSerializer, SetDetailsSerializer, EditSetSerializer
 
 
 class WorkoutsByUserListView(rest_generic_views.ListAPIView):
@@ -111,12 +114,15 @@ class WorkoutSessionDetailsView(rest_generic_views.RetrieveAPIView):
 
 
 class AddSetToExerciseSession(rest_generic_views.CreateAPIView):
+    serializer_class = SetDetailsSerializer
+
     def post(self, request, *args, **kwargs):
         session_id = kwargs.get('session_id')
         try:
             exercise_session = ExerciseSession.objects.get(id=session_id)
-            ExerciseSession.add_single_set_instance(request, exercise_session, empty_set)
-            return Response(status=status.HTTP_204_NO_CONTENT)
+            new_set_instance = ExerciseSession.add_single_set_instance(request, exercise_session, empty_set)
+            serialized_set = self.serializer_class(new_set_instance)
+            return Response(serialized_set.data, status=status.HTTP_200_OK)
         except ExerciseSession.DoesNotExist:
             return Response("Invalid exercise session", status=status.HTTP_400_BAD_REQUEST)
 
@@ -134,6 +140,89 @@ class RemoveSetFromExerciseSession(rest_generic_views.DestroyAPIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Set.DoesNotExist:
             return Response('Cant delete not existing set.', status=status.HTTP_400_BAD_REQUEST)
+
+
+class EditSet(views.APIView):
+    queryset = Set.objects.all()
+    serializer_class = EditSetSerializer
+
+    def post(self, request, *args, **kwargs):
+        set_id = kwargs.get('set_id')
+        try:
+            set_instance = self.queryset.get(id=set_id)
+            data = request.data
+
+            def convert_str_to_float(value):
+                if ',' in value:
+                    value = value.replace(",", ".")
+                return float(value)
+
+            weight = data.get('weight')
+            converted_weight = convert_str_to_float(weight)
+            set_obj = {
+                'reps': str(data.get('reps')),
+                "weight": converted_weight,
+                "max_reps": str(data.get('maxReps')),
+                "min_reps": str(data.get('minReps')),
+                "to_failure": data.get('failure'),
+                "bodyweight": data.get('bodyweight'),
+                'created_by': set_instance.created_by.pk
+            }
+            serializer = self.serializer_class(data=set_obj)
+            serializer.is_valid(raise_exception=True)
+
+            updated_instance = Set.edit_data(request, set_instance, set_obj)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Set.DoesNotExist:
+            return Response('There was an error updating the set!', status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetExerciseProgress(views.APIView):
+    authentication_classes = []
+    permission_classes = []
+    def get(self, request, *args, **kwargs):
+        session_id = kwargs.get('session_id')
+        try:
+            exercise_session = ExerciseSession.objects.get(id=session_id)
+        except ExerciseSession.DoesNotExist:
+            return Response("Exercise session does not exist!", status=status.HTTP_400_BAD_REQUEST)
+        sets = exercise_session.sets.all()
+        return_array = []
+        for set in sets:
+            if len(set.history.all()) > 0:
+                set_history_array = []
+                for set_history in set.history.all()[::-1]:
+                    set_history_array.append({
+                        'weight': set_history.weight,
+                        'updated_at': transform_timestamp(str(set_history.updated_at))
+                    })
+                return_array.append(set_history_array)
+            return_array.append([])
+        return Response(return_array, status=status.HTTP_200_OK)
+
+
+# @api_view(["GET"])
+# @authentication_classes([TokenAuthentication])
+# @permission_classes([IsAuthenticated])
+# def get_exercise_progress(request, session_id):
+#     print(request.user)
+#     try:
+#         exercise_session = ExerciseSession.objects.get(id=session_id)
+#     except ExerciseSession.DoesNotExist:
+#         return Response("Exercise session does not exist!", status=status.HTTP_400_BAD_REQUEST)
+#     sets = exercise_session.sets.all()
+#     return_array = []
+#     for set in sets:
+#         if len(set.history.all()) > 0:
+#             set_history_array = []
+#             for set_history in set.history.all()[::-1]:
+#                 set_history_array.append({
+#                     'weight': set_history.weight,
+#                     'updated_at': transform_timestamp(str(set_history.updated_at))
+#                 })
+#             return_array.append(set_history_array)
+#         return_array.append([])
+#     return Response(return_array, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

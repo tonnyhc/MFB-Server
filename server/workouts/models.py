@@ -1,7 +1,9 @@
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.db import models, transaction, IntegrityError
+from simple_history.models import HistoricalRecords
 
 from server.profiles.models import Profile
+from django.db.models import Max
 
 
 class Set(models.Model):
@@ -27,16 +29,41 @@ class Set(models.Model):
     bodyweight = models.BooleanField(
         default=False
     )
+    # this is the index the set will be in the exercise session
+    set_index = models.PositiveIntegerField(
+        default=0
+    )
 
     created_at = models.DateTimeField(
         auto_now_add=True
     )
-
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
     created_by = models.ForeignKey(
         Profile,
         on_delete=models.CASCADE
     )
 
+    history = HistoricalRecords()
+
+    @staticmethod
+    def edit_data(request, set_instance, set_data):
+        set_instance.reps = set_data['reps']
+        set_instance.weight = set_data['weight']
+        set_instance.min_reps = set_data['min_reps']
+        set_instance.max_reps = set_data['max_reps']
+        set_instance.to_failure = set_data['to_failure']
+        set_instance.bodyweight = set_data['bodyweight']
+
+        set_instance.save()
+        return set_instance
+
+    class Meta:
+        ordering = ['set_index']
+
+
+# class
 
 class Exercise(models.Model):
     MAX_LEN_NAME = 50
@@ -77,6 +104,7 @@ class Exercise(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class ExerciseSession(models.Model):
     profile = models.ForeignKey(
@@ -142,6 +170,26 @@ class ExerciseSession(models.Model):
         ExerciseSession.create_sets(request, exercise_session, sets_data)
 
         return exercise_session
+
+    @staticmethod
+    def add_single_set_instance(request, exercise_session, set_data):
+        current_sets = exercise_session.sets.all()
+        max_set_index = current_sets.aggregate(Max('set_index'))['set_index__max']
+        new_set_index = max_set_index + 1 if max_set_index is not None else 0
+
+        set_instance = Set.objects.create(
+            weight=set_data.get('weight', 0),
+            reps=set_data.get('reps', 0),
+            min_reps=set_data.get('minReps', 0),
+            max_reps=set_data.get('maxReps', 0),
+            to_failure=set_data.get('failure', False),
+            bodyweight=set_data.get('bodyweight', False),
+            set_index=new_set_index,
+            created_by=request.user.profile
+        )
+
+        exercise_session.sets.add(set_instance)
+        return set_instance
 
 
 class WorkoutSession(models.Model):

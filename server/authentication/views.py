@@ -25,7 +25,7 @@ class LoginView(authtoken_views.ObtainAuthToken):
     def post(self, request, *args, **kwargs):
         refactored_data = {
             **request.data,
-            'email': request.data.get('email').lower()
+            'email': request.data.get('email').lower() if request.data.get('email') else ""
         }
         serializer = self.serializer_class(data=refactored_data,
                                            context={'request': request})
