@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'server.authentication',
     'server.profiles',
     'server.workouts',
+    'server.health',
 
 ]
 
