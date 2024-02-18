@@ -15,6 +15,12 @@ class ActivityChoicesMixin(ChoicesEnumMixin, Enum):
     Extreme = "Extreme"
 
 
+class FitnessGoalChoices(ChoicesEnumMixin, Enum):
+    Bulk = "Bulk"
+    Cut = "Cut"
+    Maintain = "Maintain"
+
+
 class Measures(models.Model):
     height = models.PositiveIntegerField(
         blank=True,
@@ -27,6 +33,14 @@ class Measures(models.Model):
     activity = models.CharField(
         choices=ActivityChoicesMixin.choices(),
         max_length=ActivityChoicesMixin.max_len(),
+        blank=True,
+        null=True
+    )
+    goal = models.CharField(
+        choices=FitnessGoalChoices.choices(),
+        max_length=FitnessGoalChoices.max_len(),
+        blank=True,
+        null=True
     )
     profile = models.ForeignKey(
         Profile,

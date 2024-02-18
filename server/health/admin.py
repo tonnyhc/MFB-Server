@@ -1,3 +1,8 @@
 from django.contrib import admin
 
-# Register your models here.
+from server.health.models import Measures
+
+
+@admin.register(Measures)
+class MeasuresAdmin(admin.ModelAdmin):
+    pass

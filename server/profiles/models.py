@@ -34,5 +34,9 @@ class Profile(models.Model):
         UserModel,
         on_delete=models.CASCADE
     )
+    birthday = models.DateField(
+        blank=True,
+        null=True
+    )
 
     objects = ProfileManager()
