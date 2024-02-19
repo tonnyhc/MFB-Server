@@ -6,5 +6,5 @@ urlpatterns = [
     path('authentication/', include('server.authentication.urls')),
     path('profile/', include('server.profiles.urls')),
     path('workouts/', include('server.workouts.urls')),
-    path('health/', include('server.workouts.urls'))
+    path('health/', include('server.health.urls'))
 ]

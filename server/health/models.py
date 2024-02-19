@@ -30,6 +30,14 @@ class Measures(models.Model):
         blank=True,
         null=True,
     )
+
+    profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE
+    )
+
+
+class Fitness(models.Model):
     activity = models.CharField(
         choices=ActivityChoicesMixin.choices(),
         max_length=ActivityChoicesMixin.max_len(),
