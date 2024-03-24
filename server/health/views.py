@@ -27,7 +27,7 @@ class EditActivity(rest_generic_views.UpdateAPIView):
         return self.request.user.profile.fitness_set.first()
 
     def put(self, request, *args, **kwargs):
-        provided_activity = request.data.get('activity')
+        provided_activity = request.data
         if not provided_activity:
             return Response({'error': 'Activity field is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -46,7 +46,7 @@ class EditActivity(rest_generic_views.UpdateAPIView):
 class EditGoal(rest_generic_views.UpdateAPIView):
 
     def put(self, request, *args, **kwargs):
-        provided_goal = request.data.get('goal')
+        provided_goal = request.data
         if not provided_goal:
             return Response({'error': 'Fitness goal is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -58,7 +58,7 @@ class EditGoal(rest_generic_views.UpdateAPIView):
 
         query = self.get_queryset()
 
-        query.goal = provided_goal
+        query.goal = goal_enum_value
         query.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 

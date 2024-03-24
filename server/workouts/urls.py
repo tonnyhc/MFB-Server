@@ -2,7 +2,7 @@ from django.urls import path, include
 
 from server.workouts.views import CreateWorkoutPlanView, CreateExerciseView, SearchExerciseView, WorkoutsByUserListView, \
     WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, AddSetToExerciseSession, \
-    RemoveSetFromExerciseSession, EditSet, GetExerciseProgress
+    RemoveSetFromExerciseSession, EditSet, GetExerciseProgress, MuscleGroupsListView
 
 urlpatterns = [
     path('workout-plan/', include([
@@ -24,6 +24,9 @@ urlpatterns = [
     path('workout/', include([
         path('session/<int:id>/', WorkoutSessionDetailsView.as_view(), name='workout session details'),
         # path('publish/<int:id>', publish_workout, name='publish workout')
+    ])),
+    path('muscle-group/', include([
+        path('list/', MuscleGroupsListView.as_view(), name='muscle group list view')
     ]))
 
 ]

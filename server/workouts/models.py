@@ -6,6 +6,7 @@ from server.profiles.models import Profile
 from django.db.models import Max
 
 
+
 class Set(models.Model):
     weight = models.FloatField(
         blank=True,
@@ -65,15 +66,21 @@ class Set(models.Model):
 
 # class
 
+class MuscleGroup(models.Model):
+    name = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
+
 class Exercise(models.Model):
     MAX_LEN_NAME = 50
     name = models.CharField(
         max_length=MAX_LEN_NAME,
     )
-    cover_photo = models.URLField(
-        blank=True,
-        null=True
+    cover_photo = models.ImageField(
+        # upload_to=
     )
+    targeted_muscle_groups = models.ManyToManyField(MuscleGroup)
     information = models.TextField(
         blank=True,
         null=True
@@ -86,6 +93,7 @@ class Exercise(models.Model):
         blank=True,
         null=True,
     )
+
 
     # If this is a custom exercise for the given user then set it, otherwise if it comes from the server's
     # already declared exercises skip it
@@ -281,7 +289,7 @@ class WorkoutPlan(models.Model):
 
                 # Plan name validation
                 if not name:
-                    raise ValidationError("Provide a name for your workout plan")
+                    raise ValidationError(message="Provide a name for your workout plan")
 
                 workout_plan = WorkoutPlan.objects.create(
                     name=name,
@@ -290,7 +298,7 @@ class WorkoutPlan(models.Model):
                 )
 
                 for workout_data in workout_plan_data['workouts']:
-                    workout_name = workout_data['workoutName']
+                    workout_name = workout_data['name']
                     exercises_data = workout_data['exercises']
                     # Creating the instance
                     workout_session = WorkoutSession.create_session(request=request, workout_name=workout_name,

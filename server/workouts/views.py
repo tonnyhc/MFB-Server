@@ -7,11 +7,12 @@ from rest_framework.response import Response
 
 from server.map_data import empty_set
 from server.utils import transform_timestamp
-from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, ExerciseSession, Set
+from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, ExerciseSession, Set, MuscleGroup
 from server.workouts.serializers import BaseWorkoutPlanSerializer, CreateExerciseSerializer, \
     WorkoutPlanDetailsSerializer, \
     WorkoutPlanCreationSerializer, BaseExerciseSerializer, BaseWorkoutSessionSerializer, \
-    WorkoutSessionDetailsSerializer, BaseSetSerializer, SetDetailsSerializer, EditSetSerializer
+    WorkoutSessionDetailsSerializer, BaseSetSerializer, SetDetailsSerializer, EditSetSerializer, \
+    BaseMuscleGroupSerializer
 
 
 class WorkoutsByUserListView(rest_generic_views.ListAPIView):
@@ -88,6 +89,7 @@ class CreateExerciseView(rest_generic_views.CreateAPIView):
     def post(self, request, *args, **kwargs):
         try:
             exercise_data = request.data
+            print(exercise_data)
             to_publish = request.data.get('publish')
             serializer = self.serializer_class(data=exercise_data)
             serializer.is_valid(raise_exception=True)
@@ -223,6 +225,13 @@ class GetExerciseProgress(views.APIView):
 #             return_array.append(set_history_array)
 #         return_array.append([])
 #     return Response(return_array, status=status.HTTP_200_OK)
+
+
+
+class MuscleGroupsListView(rest_generic_views.ListAPIView):
+    queryset = MuscleGroup.objects.all()
+    serializer_class = BaseMuscleGroupSerializer
+
 
 
 @api_view(['POST'])
