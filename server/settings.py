@@ -1,6 +1,9 @@
 from pathlib import Path
-from rest_framework.permissions import AllowAny
 from decouple import config
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -47,6 +50,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'simple_history',
+    'cloudinary',
     # local apps
     'server.authentication',
     'server.profiles',
@@ -79,6 +83,12 @@ EMAIL_PORT = config("EMAIL_PORT")
 EMAIL_USE_SSL = config("EMAIL_USE_SSL", cast=bool)
 EMAIL_HOST_USER = config("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+
+cloudinary.config(
+  	cloud_name = config('CLOUDINARY_CLOUD_NAME'),
+  	api_key = config("CLOUDINARY_API_KEY"),
+  	api_secret = config("CLOUDINARY_API_SECRET"),
+)
 
 # SITE_ID = 1
 # ACCOUNT_EMAIL_REQUIRED = True
@@ -113,7 +123,7 @@ WSGI_APPLICATION = 'server.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "my_fit_buddy_db",
+        "NAME": "beastphysique_db",
         "USER": "postgres-user",
         "PASSWORD": "password",
         "HOST": "127.0.0.1",

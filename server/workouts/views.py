@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError
 from rest_framework import generics as rest_generic_views, status, serializers, views
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -12,7 +13,7 @@ from server.workouts.serializers import BaseWorkoutPlanSerializer, CreateExercis
     WorkoutPlanDetailsSerializer, \
     WorkoutPlanCreationSerializer, BaseExerciseSerializer, BaseWorkoutSessionSerializer, \
     WorkoutSessionDetailsSerializer, BaseSetSerializer, SetDetailsSerializer, EditSetSerializer, \
-    BaseMuscleGroupSerializer
+    BaseMuscleGroupSerializer, BaseWorkoutSerializer
 
 
 class WorkoutsByUserListView(rest_generic_views.ListAPIView):
@@ -77,6 +78,7 @@ class CreateWorkoutPlanView(rest_generic_views.CreateAPIView):
 class CreateExerciseView(rest_generic_views.CreateAPIView):
     queryset = Exercise
     serializer_class = CreateExerciseSerializer
+    parser_classes = (MultiPartParser, FormParser)
 
     def perform_create(self, serializer):
         user_profile = self.request.user.profile
@@ -89,18 +91,35 @@ class CreateExerciseView(rest_generic_views.CreateAPIView):
     def post(self, request, *args, **kwargs):
         try:
             exercise_data = request.data
-            print(exercise_data)
+
             to_publish = request.data.get('publish')
             serializer = self.serializer_class(data=exercise_data)
             serializer.is_valid(raise_exception=True)
             exercise = self.perform_create(serializer)
-            print(exercise)
             if to_publish:
                 exercise.is_published = True
                 exercise.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except serializers.ValidationError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class CreateWorkoutView(rest_generic_views.CreateAPIView):
+    serializer_class = BaseWorkoutSerializer
+
+    def post(self, request, *args, **kwargs):
+        workout_name = request.data.get('name')
+        exercises = request.data.get('exercises')
+        if not workout_name:
+            return Response("Please provide a name for your workout!", status=status.HTTP_400_BAD_REQUEST)
+        if not exercises:
+            return Response("The workout must contain exercises!", status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            workout = WorkoutSession.create_session(request, workout_name, exercises)
+            return Response(self.serializer_class(workout).data, status=status.HTTP_200_OK)
+        except ValidationError:
+            return Response('There was a problem creating the workout', status=status.HTTP_400_BAD_REQUEST)
 
 
 class WorkoutSessionDetailsView(rest_generic_views.RetrieveAPIView):
@@ -182,6 +201,7 @@ class EditSet(views.APIView):
 class GetExerciseProgress(views.APIView):
     authentication_classes = []
     permission_classes = []
+
     def get(self, request, *args, **kwargs):
         session_id = kwargs.get('session_id')
         try:
@@ -227,11 +247,29 @@ class GetExerciseProgress(views.APIView):
 #     return Response(return_array, status=status.HTTP_200_OK)
 
 
-
 class MuscleGroupsListView(rest_generic_views.ListAPIView):
     queryset = MuscleGroup.objects.all()
     serializer_class = BaseMuscleGroupSerializer
 
+
+class ExercisesByMuscleGroup(views.APIView):
+
+    def get(self, request):
+        muscle_groups = MuscleGroup.objects.all()
+        final_list = []
+        for muscle_group in muscle_groups:
+            # TODO: Fix this so it returns only the built ins
+            muscle_group_obj = {
+                "name": muscle_group.name,
+                "exercises": []
+            }
+            for exercise in muscle_group.exercise_set.all():
+                muscle_group_obj['exercises'].append({
+                    'name': exercise.name,
+                    'id': exercise.id
+                })
+            final_list.append(muscle_group_obj)
+        return Response(final_list, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])

@@ -47,6 +47,7 @@ class EditGoal(rest_generic_views.UpdateAPIView):
 
     def put(self, request, *args, **kwargs):
         provided_goal = request.data
+        print(provided_goal)
         if not provided_goal:
             return Response({'error': 'Fitness goal is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -57,7 +58,7 @@ class EditGoal(rest_generic_views.UpdateAPIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         query = self.get_queryset()
-
+        print(goal_enum_value)
         query.goal = goal_enum_value
         query.save()
         return Response(status=status.HTTP_204_NO_CONTENT)

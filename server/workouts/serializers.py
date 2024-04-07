@@ -6,10 +6,10 @@ from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, Exerci
 
 
 class BaseSetSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Set
         fields = "__all__"
-
 
 class EditSetSerializer(BaseSetSerializer):
     class Meta(BaseSetSerializer.Meta):
@@ -35,10 +35,27 @@ class SetDetailsSerializer(BaseSetSerializer):
 
 
 class BaseExerciseSerializer(serializers.ModelSerializer):
+    cover_photo = serializers.SerializerMethodField()
+    video_tutorial = serializers.SerializerMethodField()
+
     class Meta:
         model = Exercise
-        fields = '__all__'
+        fields = ('id', 'name', 'cover_photo', 'targeted_muscle_groups',
+                  'information', 'video_tutorial', 'tips',
+                  'created_by', 'created_at', 'is_published')
 
+    def get_cover_photo(self, obj):
+        if obj.cover_photo:
+            return obj.cover_photo.url
+        return None
+
+    def get_video_tutorial(self, obj):
+        if obj.video_tutorial:
+            return obj.video_tutorial.url
+        return None
+    # class Meta:
+    #     model = Exercise
+    #     fields = '__all__'
 
 class BaseExerciseSessionSerializer(serializers.ModelSerializer):
     exercise = BaseExerciseSerializer()

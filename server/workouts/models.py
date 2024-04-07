@@ -1,10 +1,11 @@
+import cloudinary
+from cloudinary.models import CloudinaryField
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.db import models, transaction, IntegrityError
 from simple_history.models import HistoricalRecords
 
 from server.profiles.models import Profile
 from django.db.models import Max
-
 
 
 class Set(models.Model):
@@ -72,28 +73,24 @@ class MuscleGroup(models.Model):
     def __str__(self):
         return self.name
 
+
 class Exercise(models.Model):
     MAX_LEN_NAME = 50
     name = models.CharField(
         max_length=MAX_LEN_NAME,
     )
-    cover_photo = models.ImageField(
-        # upload_to=
-    )
+    cover_photo = CloudinaryField('image', blank=True, null=True)
     targeted_muscle_groups = models.ManyToManyField(MuscleGroup)
     information = models.TextField(
         blank=True,
         null=True
     )
-    video_tutorial = models.URLField(
-        blank=True,
-        null=True,
-    )
+
+    video_tutorial = CloudinaryField(resource_type="video", blank=True, null=True)
     tips = models.TextField(
         blank=True,
         null=True,
     )
-
 
     # If this is a custom exercise for the given user then set it, otherwise if it comes from the server's
     # already declared exercises skip it

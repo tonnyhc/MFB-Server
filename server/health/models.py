@@ -44,9 +44,11 @@ class Fitness(models.Model):
         blank=True,
         null=True
     )
+    # TODO: Fix the goal's max_len
     goal = models.CharField(
         choices=FitnessGoalChoices.choices(),
-        max_length=FitnessGoalChoices.max_len(),
+        # max_length=FitnessGoalChoices.max_len(),
+        max_length=50,
         blank=True,
         null=True
     )
