@@ -53,9 +53,19 @@ class BaseExerciseSerializer(serializers.ModelSerializer):
         if obj.video_tutorial:
             return obj.video_tutorial.url
         return None
-    # class Meta:
-    #     model = Exercise
-    #     fields = '__all__'
+
+
+class ExerciseDetailsSerializer(BaseExerciseSerializer):
+    class Meta(BaseExerciseSerializer.Meta):
+        fields = BaseExerciseSerializer.Meta.fields
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        # Customize targeted_muscle_groups to include names instead of ids
+        targeted_muscle_groups = instance.targeted_muscle_groups.all()
+        representation['targeted_muscle_groups'] = [group.name for group in targeted_muscle_groups]
+        return representation
+
 
 class BaseExerciseSessionSerializer(serializers.ModelSerializer):
     exercise = BaseExerciseSerializer()

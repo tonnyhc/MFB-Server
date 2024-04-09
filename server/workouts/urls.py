@@ -3,7 +3,7 @@ from django.urls import path, include
 from server.workouts.views import CreateWorkoutPlanView, CreateExerciseView, SearchExerciseView, WorkoutsByUserListView, \
     WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, AddSetToExerciseSession, \
     RemoveSetFromExerciseSession, EditSet, GetExerciseProgress, MuscleGroupsListView, CreateWorkoutView, \
-    ExercisesByMuscleGroup
+    ExercisesByMuscleGroup, ExerciseDetailsView
 
 urlpatterns = [
     path('workout-plan/', include([
@@ -13,6 +13,7 @@ urlpatterns = [
     )),
     path('exercise/', include([
         path('create/', CreateExerciseView.as_view(), name='create exercise view'),
+        path('details/<int:pk>', ExerciseDetailsView.as_view(), name='exercise details view'),
         path('search/', SearchExerciseView.as_view(), name='search exercise'),
         path('session/', include([
             path("add-set/<int:session_id>/", AddSetToExerciseSession.as_view(), name='add set to exercise session'),
@@ -20,7 +21,8 @@ urlpatterns = [
             path('delete-set/<int:set_id>/', RemoveSetFromExerciseSession.as_view(),
                  name='delete set from exercise session'),
             path('update-set/<int:set_id>/', EditSet.as_view(), name='edit set data'),
-        ]))
+        ])),
+
     ])),
     path('workout/', include([
         path('session/<int:id>/', WorkoutSessionDetailsView.as_view(), name='workout session details'),
