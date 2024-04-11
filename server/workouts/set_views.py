@@ -1,8 +1,9 @@
 from rest_framework import generics as rest_generic_views, status, views
 from rest_framework.response import Response
 
+from server.map_data import empty_set
 from server.workouts.models import ExerciseSession, Set
-from server.workouts.serializers import SetDetailsSerializer, EditSetSerializer
+from server.workouts.set_serializers import SetDetailsSerializer, EditSetSerializer
 
 
 # Sets
