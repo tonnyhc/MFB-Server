@@ -3,8 +3,9 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
 from server.utils import transform_timestamp
+from server.workouts.exercise_serializers import ExerciseDetailsSerializer, BaseExerciseSerializer, \
+    CreateExerciseSerializer
 from server.workouts.models import Exercise, ExerciseSession
-from server.workouts.serializers import ExerciseDetailsSerializer, BaseExerciseSerializer, CreateExerciseSerializer
 
 
 class ExerciseDetailsView(rest_generic_views.RetrieveAPIView):
