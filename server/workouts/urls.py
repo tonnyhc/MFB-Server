@@ -2,10 +2,10 @@ from django.urls import path, include
 
 from server.workouts.exercise_views import CreateExerciseView, ExerciseDetailsView, SearchExerciseView, \
     GetExerciseProgress
+from server.workouts.set_views import AddSetToExerciseSession, RemoveSetFromExerciseSession, EditSet
 from server.workouts.views import CreateWorkoutPlanView, WorkoutsByUserListView, \
-    WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, AddSetToExerciseSession, \
-    RemoveSetFromExerciseSession, EditSet, MuscleGroupsListView, CreateWorkoutView, \
-    ExercisesByMuscleGroup
+    WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, CreateWorkoutView, \
+    ExercisesByMuscleGroup, MuscleGroupsListView
 
 urlpatterns = [
     path('workout-plan/', include([
