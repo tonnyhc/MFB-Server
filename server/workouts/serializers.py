@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from server.profiles.serializers import BaseProfileSerializer
 from server.utils import transform_timestamp
-from server.workouts.exercise_serializers import ExerciseSessionSerializerNameOnly
+from server.workouts.exercise_serializers import ExerciseSessionSerializerNameOnly, ExerciseSessionDetailsSerializer
 from server.workouts.models import WorkoutPlan, WorkoutSession, MuscleGroup
 
 
@@ -20,6 +20,11 @@ class WorkoutDetailsSerializer(BaseWorkoutSerializer):
     class Meta(BaseWorkoutSerializer.Meta):
         fields = BaseWorkoutSerializer.Meta.fields
 
+
+class WorkoutSessionEditSerializer(BaseWorkoutSerializer):
+    exercises = ExerciseSessionDetailsSerializer(many=True)
+    class Meta(BaseWorkoutSerializer.Meta):
+        fields = ("name", "exercises", )
 
 class BaseWorkoutSessionSerializer(serializers.ModelSerializer):
     created_at = serializers.SerializerMethodField()

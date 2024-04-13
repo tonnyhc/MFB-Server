@@ -50,7 +50,7 @@ class Set(models.Model):
     history = HistoricalRecords()
 
     @staticmethod
-    def edit_data(request, set_instance, set_data):
+    def edit_data(set_instance, set_data):
         set_instance.reps = set_data['reps']
         set_instance.weight = set_data['weight']
         set_instance.min_reps = set_data['min_reps']
@@ -60,6 +60,11 @@ class Set(models.Model):
 
         set_instance.save()
         return set_instance
+
+    @staticmethod
+    def remove_set_instance(set_instance):
+        set_instance.delete()
+        set_instance.save()
 
     class Meta:
         ordering = ['set_index']
@@ -196,6 +201,20 @@ class ExerciseSession(models.Model):
         exercise_session.sets.add(set_instance)
         return set_instance
 
+    @staticmethod
+    def edit_session(request, exercise_session, data):
+        sets = data['sets']
+        for exercise_set in sets:
+            print(exercise_set)
+            if not 'id' in exercise_set:
+                ExerciseSession.add_single_set_instance(request, exercise_session, exercise_set)
+            else:
+                try:
+                    set_instance = Set.objects.get(pk=exercise_set['id'])
+                    Set.edit_data(set_instance, exercise_set)
+                except Set.DoesNotExist:
+                    return models.ObjectDoesNotExist
+        return exercise_session.save()
 
 class WorkoutSession(models.Model):
     MAX_LEN_NAME = 50
@@ -259,6 +278,24 @@ class WorkoutSession(models.Model):
             return workout
         except WorkoutSession.DoesNotExist:
             raise IntegrityError("Workout does not exist.")
+
+    @staticmethod
+    def edit_session(request, workout_session, new_data):
+        workout_name = new_data.get('name')
+        exercises = new_data.get('exercises')
+        # looping the exercises
+        for exercise in exercises:
+            # try, catch to get the exercise_instance
+            try:
+                exercise_instance = ExerciseSession.objects.get(pk=exercise.get('id'))
+            except ExerciseSession.DoesNotExist:
+                return models.ObjectDoesNotExist
+            # if instance, sending it to the model's method to edit it
+            ExerciseSession.edit_session(request, exercise_instance, exercise)
+
+        workout_session.name = workout_name
+        workout_session.save()
+        return workout_session
 
 
 class WorkoutPlan(models.Model):

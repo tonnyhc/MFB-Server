@@ -5,7 +5,7 @@ from server.workouts.exercise_views import CreateExerciseView, ExerciseDetailsVi
 from server.workouts.set_views import AddSetToExerciseSession, RemoveSetFromExerciseSession, EditSet
 from server.workouts.views import CreateWorkoutPlanView, WorkoutsByUserListView, \
     WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, CreateWorkoutView, \
-    ExercisesByMuscleGroup, MuscleGroupsListView
+    ExercisesByMuscleGroup, MuscleGroupsListView, WorkoutSearchView, WorkoutSessionEditView
 
 urlpatterns = [
     path('workout-plan/', include([
@@ -28,7 +28,9 @@ urlpatterns = [
     ])),
     path('workout/', include([
         path('session/<int:id>/', WorkoutSessionDetailsView.as_view(), name='workout session details'),
+        path('session/edit/<int:pk>/', WorkoutSessionEditView.as_view(), name='workout session edit '),
         path('create/', CreateWorkoutView.as_view(), name='create workout'),
+        path('search/', WorkoutSearchView.as_view(), name='search workout'),
         # path('publish/<int:id>', publish_workout, name='publish workout')
     ])),
     path('muscle-group/', include([

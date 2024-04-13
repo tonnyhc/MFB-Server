@@ -7,11 +7,10 @@ from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, Muscle
 from server.workouts.serializers import BaseWorkoutPlanSerializer, \
     WorkoutPlanDetailsSerializer, \
     WorkoutPlanCreationSerializer, WorkoutSessionDetailsSerializer, \
-    BaseMuscleGroupSerializer, BaseWorkoutSerializer
+    BaseMuscleGroupSerializer, BaseWorkoutSerializer, WorkoutSessionEditSerializer
 
 
 # Workouts
-
 class WorkoutsByUserListView(rest_generic_views.ListAPIView):
     queryset = WorkoutPlan.objects.all()
     serializer_class = BaseWorkoutPlanSerializer
@@ -51,6 +50,37 @@ class WorkoutSessionDetailsView(rest_generic_views.RetrieveAPIView):
 
         return Response(serialized_query.data, status=status.HTTP_200_OK)
 
+
+class WorkoutSessionEditView(rest_generic_views.UpdateAPIView):
+    queryset = WorkoutSession.objects.all()
+    serializer_class = WorkoutSessionEditSerializer
+
+    def put(self, request, *args, **kwargs):
+        workout_id = kwargs.get('pk')
+        try:
+            workout = WorkoutSession.objects.get(pk=workout_id)
+        except WorkoutSession.DoesNotExist:
+            return Response("Workout session does not exist.",status=status.HTTP_400_BAD_REQUEST)
+
+        edited_session = WorkoutSession.edit_session(request, workout, request.data)
+        print(self.serializer_class(edited_session).data)
+        return Response(self.serializer_class(edited_session).data, status=status.HTTP_200_OK)
+
+class WorkoutSearchView(rest_generic_views.ListAPIView):
+    queryset = WorkoutSession.objects.all()
+    serializer_class = WorkoutSessionDetailsSerializer
+
+    def get(self, request, *args, **kwargs):
+        profile = request.user.profile
+        searched_name = request.query_params.get('name')
+        all_workouts_by_name = self.queryset.filter(name__icontains=searched_name).all()
+        exercises_created_by_user = all_workouts_by_name.filter(created_by=profile).all()
+        exercises = all_workouts_by_name.filter(is_published=True)
+
+        return Response({
+            'workouts_by_user': self.serializer_class(exercises_created_by_user, many=True).data,
+            'workouts': self.serializer_class(exercises, many=True).data
+        }, status=status.HTTP_200_OK)
 
 # Workout plans
 
