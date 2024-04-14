@@ -136,7 +136,6 @@ class ExerciseSession(models.Model):
         numbers_fields = ['weight', 'reps', 'min_reps', 'max_reps']
         for set_data in data:
             if not all(field in set_data for field in required_fields):
-
                 raise ValidationError("Each set must have values for all fields: {}".format(', '.join(required_fields)))
 
             for field in numbers_fields:
@@ -293,22 +292,29 @@ class WorkoutSession(models.Model):
         workout_name = new_data.get('name')
         exercises = new_data.get('exercises')
         workout_session_exercises_instances = workout_session.exercises.all()
-        if not exercises or exercises == []:
-            workout_session.exercises.all().delete()
+
+        # Getting all the ids for the exercises send by the request
+        new_exercise_ids = [exercise_session.get('id') for exercise_session in exercises]
+
+        for existing_exercise in workout_session_exercises_instances:
+            # checking if the exercise is in the session if not deleting!
+            if existing_exercise.pk not in new_exercise_ids:
+                workout_session.exercises.remove(existing_exercise)
+
         # looping the exercises
         for exercise_session in exercises:
             # try, catch to get the exercise_instance
             try:
                 exercise_instance = ExerciseSession.objects.get(pk=exercise_session.get('id'))
+                # if instance, sending it to the model's method to edit it
                 ExerciseSession.edit_session(request, exercise_instance, exercise_session)
             except ExerciseSession.DoesNotExist:
-                # if not Exercise_session instance that means the exercise is added to the workout now!
+                # if not instance that means the exercise is added to the workout now!
                 exercise = exercise_session['exercise']
                 sets = exercise_session['sets']
                 exercise_instance = ExerciseSession.create_session(request, exercise['name'], sets)
                 exercise_instance.save()
                 workout_session.exercises.add(exercise_instance)
-            # if instance, sending it to the model's method to edit it
 
         workout_session.name = workout_name
         workout_session.save()

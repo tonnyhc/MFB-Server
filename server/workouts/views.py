@@ -66,7 +66,6 @@ class WorkoutSessionEditView(rest_generic_views.UpdateAPIView):
             return Response("Workout session does not exist.", status=status.HTTP_400_BAD_REQUEST)
 
         edited_session = WorkoutSession.edit_session(request, workout, request.data)
-        print(self.serializer_class(edited_session).data)
         return Response(self.serializer_class(edited_session).data, status=status.HTTP_200_OK)
 
 
