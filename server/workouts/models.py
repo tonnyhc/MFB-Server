@@ -129,6 +129,10 @@ class ExerciseSession(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True
     )
+    notes = models.TextField(
+        blank=True,
+        null=True
+    )
 
     @staticmethod
     def validate_sets(data):
