@@ -300,6 +300,7 @@ class WorkoutSession(models.Model):
             # checking if the exercise is in the session if not deleting!
             if existing_exercise.pk not in new_exercise_ids:
                 workout_session.exercises.remove(existing_exercise)
+                existing_exercise.delete()
 
         # looping the exercises
         for exercise_session in exercises:
