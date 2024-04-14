@@ -23,10 +23,12 @@ class WorkoutsByUserListView(rest_generic_views.ListAPIView):
 
 class CreateWorkoutView(rest_generic_views.CreateAPIView):
     serializer_class = BaseWorkoutSerializer
+    details_serializer = WorkoutSessionDetailsSerializer
 
     def post(self, request, *args, **kwargs):
         workout_name = request.data.get('name')
         exercises = request.data.get('exercises')
+
         if not workout_name:
             return Response("Please provide a name for your workout!", status=status.HTTP_400_BAD_REQUEST)
         if not exercises:
@@ -34,7 +36,7 @@ class CreateWorkoutView(rest_generic_views.CreateAPIView):
 
         try:
             workout = WorkoutSession.create_session(request, workout_name, exercises)
-            return Response(self.serializer_class(workout).data, status=status.HTTP_200_OK)
+            return Response(self.details_serializer(workout).data, status=status.HTTP_200_OK)
         except ValidationError:
             return Response('There was a problem creating the workout', status=status.HTTP_400_BAD_REQUEST)
 
@@ -60,11 +62,13 @@ class WorkoutSessionEditView(rest_generic_views.UpdateAPIView):
         try:
             workout = WorkoutSession.objects.get(pk=workout_id)
         except WorkoutSession.DoesNotExist:
-            return Response("Workout session does not exist.",status=status.HTTP_400_BAD_REQUEST)
+
+            return Response("Workout session does not exist.", status=status.HTTP_400_BAD_REQUEST)
 
         edited_session = WorkoutSession.edit_session(request, workout, request.data)
         print(self.serializer_class(edited_session).data)
         return Response(self.serializer_class(edited_session).data, status=status.HTTP_200_OK)
+
 
 class WorkoutSearchView(rest_generic_views.ListAPIView):
     queryset = WorkoutSession.objects.all()
@@ -81,6 +85,7 @@ class WorkoutSearchView(rest_generic_views.ListAPIView):
             'workouts_by_user': self.serializer_class(exercises_created_by_user, many=True).data,
             'workouts': self.serializer_class(exercises, many=True).data
         }, status=status.HTTP_200_OK)
+
 
 # Workout plans
 

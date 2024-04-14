@@ -132,10 +132,11 @@ class ExerciseSession(models.Model):
 
     @staticmethod
     def validate_sets(data):
-        required_fields = ['weight', 'reps', 'minReps', 'maxReps', 'failure', 'bodyweight']
-        numbers_fields = ['weight', 'reps', 'minReps', 'maxReps']
+        required_fields = ['weight', 'reps', 'min_reps', 'max_reps', 'to_failure', 'bodyweight']
+        numbers_fields = ['weight', 'reps', 'min_reps', 'max_reps']
         for set_data in data:
             if not all(field in set_data for field in required_fields):
+
                 raise ValidationError("Each set must have values for all fields: {}".format(', '.join(required_fields)))
 
             for field in numbers_fields:
@@ -153,10 +154,10 @@ class ExerciseSession(models.Model):
         for set_data in sets_data:
             set_instance = Set.objects.create(
                 weight=None if set_data['bodyweight'] else set_data['weight'],
-                reps=None if set_data['failure'] else set_data['reps'],
-                min_reps=None if set_data['failure'] else set_data['minReps'],
-                max_reps=None if set_data['failure'] else set_data['maxReps'],
-                to_failure=set_data['failure'],
+                reps=None if set_data['to_failure'] else set_data['reps'],
+                min_reps=None if set_data['to_failure'] else set_data['min_reps'],
+                max_reps=None if set_data['to_failure'] else set_data['max_reps'],
+                to_failure=set_data['to_failure'],
                 bodyweight=set_data['bodyweight'],
                 created_by=request.user.profile
 
@@ -168,16 +169,23 @@ class ExerciseSession(models.Model):
     @staticmethod
     def create_session(request, exercise_name, sets_data):
         try:
+
             exercise = Exercise.objects.get(name=exercise_name)
+
         except Exercise.DoesNotExist:
             raise ValidationError("There was a problem selecting the exercise - " + exercise_name)
 
-        exercise_session = ExerciseSession.objects.create(
-            profile=request.user.profile,
-            exercise=exercise
-        )
+        with transaction.atomic():
+            exercise_session = ExerciseSession.objects.create(
+                profile=request.user.profile,
+                exercise=exercise,
+            )
 
-        ExerciseSession.create_sets(request, exercise_session, sets_data)
+            sets_array = ExerciseSession.create_sets(request, exercise_session, sets_data)
+
+            # If there was an error creating sets, rollback the transaction
+            if not sets_array:
+                raise ValidationError("Failed to create sets for the session.")
 
         return exercise_session
 
@@ -205,7 +213,6 @@ class ExerciseSession(models.Model):
     def edit_session(request, exercise_session, data):
         sets = data['sets']
         for exercise_set in sets:
-            print(exercise_set)
             if not 'id' in exercise_set:
                 ExerciseSession.add_single_set_instance(request, exercise_session, exercise_set)
             else:
@@ -215,6 +222,7 @@ class ExerciseSession(models.Model):
                 except Set.DoesNotExist:
                     return models.ObjectDoesNotExist
         return exercise_session.save()
+
 
 class WorkoutSession(models.Model):
     MAX_LEN_NAME = 50
@@ -252,8 +260,9 @@ class WorkoutSession(models.Model):
         )
 
         for exercise_data in exercises:
-            exercise_session = ExerciseSession.create_session(request, exercise_data['name'],
-                                                              exercise_data['sets'])
+            exercise = exercise_data['exercise']
+            sets = exercise_data['sets']
+            exercise_session = ExerciseSession.create_session(request, exercise['name'], sets)
             workout_session.exercises.add(exercise_session)
 
         workout_session.total_sets = workout_session.exercises.aggregate(total_sets=models.Count('sets'))[
@@ -283,15 +292,23 @@ class WorkoutSession(models.Model):
     def edit_session(request, workout_session, new_data):
         workout_name = new_data.get('name')
         exercises = new_data.get('exercises')
+        workout_session_exercises_instances = workout_session.exercises.all()
+        if not exercises or exercises == []:
+            workout_session.exercises.all().delete()
         # looping the exercises
-        for exercise in exercises:
+        for exercise_session in exercises:
             # try, catch to get the exercise_instance
             try:
-                exercise_instance = ExerciseSession.objects.get(pk=exercise.get('id'))
+                exercise_instance = ExerciseSession.objects.get(pk=exercise_session.get('id'))
+                ExerciseSession.edit_session(request, exercise_instance, exercise_session)
             except ExerciseSession.DoesNotExist:
-                return models.ObjectDoesNotExist
+                # if not Exercise_session instance that means the exercise is added to the workout now!
+                exercise = exercise_session['exercise']
+                sets = exercise_session['sets']
+                exercise_instance = ExerciseSession.create_session(request, exercise['name'], sets)
+                exercise_instance.save()
+                workout_session.exercises.add(exercise_instance)
             # if instance, sending it to the model's method to edit it
-            ExerciseSession.edit_session(request, exercise_instance, exercise)
 
         workout_session.name = workout_name
         workout_session.save()
