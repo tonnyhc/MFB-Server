@@ -215,6 +215,7 @@ class ExerciseSession(models.Model):
     @staticmethod
     def edit_session(request, exercise_session, data):
         sets = data['sets']
+        notes = data['notes']
         for exercise_set in sets:
             if not 'id' in exercise_set:
                 ExerciseSession.add_single_set_instance(request, exercise_session, exercise_set)
@@ -224,6 +225,7 @@ class ExerciseSession(models.Model):
                     Set.edit_data(set_instance, exercise_set)
                 except Set.DoesNotExist:
                     return models.ObjectDoesNotExist
+        exercise_session.notes = notes
         return exercise_session.save()
 
 
