@@ -14,8 +14,10 @@ class BaseFitnessSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class EditMeasuresSerializer(BaseMeasuresSerializer):
-    weight = serializers.CharField(allow_blank=False, allow_null=False)
-    height = serializers.CharField(allow_blank=False, allow_null=False)
+    # weight = serializers.CharField(allow_blank=True, allow_null=True)
+    weight = serializers.FloatField(allow_null=True)
+    height = serializers.FloatField(allow_null=True)
+    # height = serializers.CharField(allow_blank=True, allow_null=True)
     class Meta(BaseMeasuresSerializer.Meta):
         # model = Measures
         fields = ('weight', 'height')

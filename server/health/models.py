@@ -1,4 +1,6 @@
+from django.core.validators import MinValueValidator
 from django.db import models
+from simple_history.models import HistoricalRecords
 
 from server.profiles.models import Profile
 
@@ -26,15 +28,20 @@ class Measures(models.Model):
         blank=True,
         null=True,
     )
-    weight = models.PositiveIntegerField(
+    weight = models.FloatField(
         blank=True,
         null=True,
+        validators=[
+            MinValueValidator(0.0)
+        ]
     )
 
     profile = models.ForeignKey(
         Profile,
         on_delete=models.CASCADE
     )
+
+    history = HistoricalRecords()
 
 
 class Fitness(models.Model):
@@ -50,7 +57,7 @@ class Fitness(models.Model):
         # max_length=FitnessGoalChoices.max_len(),
         max_length=50,
         blank=True,
-        null=True
+        null=True,
     )
     profile = models.ForeignKey(
         Profile,

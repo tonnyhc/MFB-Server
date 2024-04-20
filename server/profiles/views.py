@@ -94,3 +94,5 @@ class ProfileBirthDaySetupView(rest_generic_views.UpdateAPIView):
 
     def get_queryset(self):
         return Profile.objects.filter(user=self.request.user).first()
+
+
