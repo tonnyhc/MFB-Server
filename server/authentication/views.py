@@ -1,7 +1,8 @@
 import re
 
 from django.contrib.auth import get_user_model, login
-from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from rest_framework import generics as rest_generic_views, views as rest_views, status
 from rest_framework.authtoken import views as authtoken_views
 from rest_framework.authtoken import models as authtoken_models
@@ -9,7 +10,7 @@ from rest_framework.response import Response
 
 from server.authentication.models import ConfirmationCode
 from server.authentication.serializers import LoginSerializer, RegisterSerializer, \
-    ConfirmVerificationCodeForPasswordResetSerializer, ResetPasswordSerializer
+    ConfirmVerificationCodeForPasswordResetSerializer, ResetPasswordSerializer, ChangePasswordSerializer
 from server.authentication.utils import send_confirmation_code_forgotten_password, send_confirmation_code_for_register
 from server.profiles.models import Profile
 
@@ -52,19 +53,20 @@ class RegisterView(rest_generic_views.CreateAPIView):
 
     # TODO: Write some tests
     def post(self, request, *args, **kwargs):
-        username_to_lower_case = request.data.get('username').lower()
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'].lower()
+        username = serializer.validated_data['username'].lower()
 
-        email_to_lower_case = request.data.get('email').lower()
         password = request.data.get('password')
         data_for_serializer = {
-            'email': email_to_lower_case,
-            'username': username_to_lower_case,
+            'email': email,
+            'username': username,
             'password': password
         }
 
         serializer = self.serializer_class(data=data_for_serializer, context={'request': request})
         serializer.is_valid(raise_exception=True)
-
         user = serializer.save()
         Profile.objects.create_profile(user=user)
 
@@ -197,6 +199,27 @@ class RessetPasswordView(rest_views.APIView):
             return Response('Password reset successfully', status=status.HTTP_200_OK)
         except ObjectDoesNotExist:
             return Response('A problem occurred', status=status.HTTP_400_BAD_REQUEST)
+
+class ChangePasswordView(rest_views.APIView):
+    serializer_class = ChangePasswordSerializer
+    def put(self, request):
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        password = request.data.get('password')
+        new_password = request.data.get('new_password')
+        user = request.user
+        if not user.check_password(raw_password=password):
+            return Response('Wrong password', status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            validate_password(new_password, user=user)
+        except ValidationError as e:
+            return Response( e.messages, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            user.set_password(new_password)
+            user.save()
+            return Response('Password changed successfully', status=status.HTTP_204_NO_CONTENT)
+
 
 
 class VerifyAuthTokenView(rest_views.APIView):

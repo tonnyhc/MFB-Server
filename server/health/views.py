@@ -30,16 +30,16 @@ class EditMeasures(rest_generic_views.UpdateAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_object(self):
-        return self.request.user.profile.measures_set.first()
+        return self.request.user.profile.measures
 
     def get_queryset(self):
-        return self.request.user.profile.measures_set.first()
+        return self.request.user.profile.measures
         # return Measures.objects.filter(profile=self.request.user.profile)
 
 
 class EditActivity(rest_generic_views.UpdateAPIView):
     def get_queryset(self):
-        return self.request.user.profile.fitness_set.first()
+        return self.request.user.profile.fitness
 
     def put(self, request, *args, **kwargs):
         provided_activity = request.data
@@ -77,14 +77,14 @@ class EditGoal(rest_generic_views.UpdateAPIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_queryset(self):
-        return self.request.user.profile.fitness_set.first()
+        return self.request.user.profile.fitness
 
 
 class ProfileGoalView(views.APIView):
     def get(self, request, *args, **kwargs):
         profile = request.user.profile
-        fitness_set = profile.fitness_set.first()
-        goal = fitness_set.goal
+        fitness = profile.fitness
+        goal = fitness.goal
         goal_text = goal.split('.')[-1]
 
         return Response(goal_text, status=status.HTTP_200_OK)
@@ -93,10 +93,10 @@ class ProfileGoalView(views.APIView):
 class ProfileWeightView(views.APIView):
     def get(self, request):
         profile = request.user.profile
-        measures_set = profile.measures_set.get()
-        weight = measures_set.weight
+        measures = profile.measures
+        weight = measures.weight
         weight_logs = [{'weight': log.weight, 'date': transform_timestamp_without_hour(str(log.history_date))} for log
-                       in measures_set.history.all()]
+                       in measures.history.all()]
 
         sorted_logs = sorted(weight_logs, key=lambda x: x['date'], reverse=True)
 

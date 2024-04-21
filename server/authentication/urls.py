@@ -1,7 +1,8 @@
 from django.urls import path
 
 from server.authentication.views import RegisterView, LogoutView, LoginView, ConfirmEmail, ForgottenPasswordView, \
-    ConfirmVerificationCodeForPasswordReset, RessetPasswordView, ResentVerificationCode, VerifyAuthTokenView
+    ConfirmVerificationCodeForPasswordReset, RessetPasswordView, ResentVerificationCode, VerifyAuthTokenView, \
+    ChangePasswordView
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login view'),
@@ -14,4 +15,5 @@ urlpatterns = [
          name='forgotten password verify code'),
     path('forgotten-password/reset/', RessetPasswordView.as_view(), name='forgotten password reset'),
     path('verify-token/', VerifyAuthTokenView.as_view(), name='verify token'),
+    path('change-password/' ,ChangePasswordView.as_view(), name='change password'),
 ]

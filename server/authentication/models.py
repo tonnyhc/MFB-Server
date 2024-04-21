@@ -7,6 +7,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from rest_framework.exceptions import ValidationError
 
 from server.mixins import ChoicesEnumMixin
+from server.models_utils import MAX_LEN_ACCOUNT_USERNAME
 
 
 class CustomUserManager(BaseUserManager):
@@ -47,16 +48,16 @@ class CustomUserManager(BaseUserManager):
         return True
 
 
-
 class AppUser(AbstractBaseUser, PermissionsMixin):
-    MAX_LEN_USERNAME = 30
-
     email = models.EmailField(unique=True, error_messages={
         'unique': "A user with this email already exists. "
     })
     username = models.CharField(
-        max_length=MAX_LEN_USERNAME,
-        unique=True
+        max_length=MAX_LEN_ACCOUNT_USERNAME,
+        unique=True,
+        error_messages={
+            'unique': "A user with this username already exists. "
+        }
     )
     is_active = models.BooleanField(default=True)
     is_verified = models.BooleanField(default=False)
@@ -90,9 +91,11 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
 
 UserModel = get_user_model()
 
+
 class ConfirmationCodeTypeChoices(ChoicesEnumMixin, Enum):
     AccountVerification = 'AccountVerification'
     ForgottenPassword = "ForgottenPassword"
+
 
 class ConfirmationCode(models.Model):
     MAX_LEN_CODE = 5

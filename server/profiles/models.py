@@ -1,11 +1,14 @@
 from enum import Enum
 
+from cloudinary.models import CloudinaryField
 from django.contrib.auth import get_user_model
 from django.db import models
 
 from server.mixins import ChoicesEnumMixin
+from server.models_utils import MAX_LEN_PROFILE_FULL_NAME, MAX_LEN_PROFILE_BIO
 
 UserModel = get_user_model()
+
 
 class GenderChoices(ChoicesEnumMixin, Enum):
     Man = "Man"
@@ -22,9 +25,8 @@ class ProfileManager(models.Manager):
 
 
 class Profile(models.Model):
-    MAX_LEN_FULL_NAME = 150
     full_name = models.CharField(
-        max_length=MAX_LEN_FULL_NAME,
+        max_length=MAX_LEN_PROFILE_FULL_NAME,
     )
     gender = models.CharField(
         choices=GenderChoices.choices(),
@@ -38,5 +40,11 @@ class Profile(models.Model):
         blank=True,
         null=True
     )
+    bio = models.TextField(
+        max_length=MAX_LEN_PROFILE_BIO,
+        blank=True,
+        null=True
+    )
+    picture = CloudinaryField("image", blank=True, null=True)
 
     objects = ProfileManager()

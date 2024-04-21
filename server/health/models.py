@@ -36,7 +36,7 @@ class Measures(models.Model):
         ]
     )
 
-    profile = models.ForeignKey(
+    profile = models.OneToOneField(
         Profile,
         on_delete=models.CASCADE
     )
@@ -59,7 +59,7 @@ class Fitness(models.Model):
         blank=True,
         null=True,
     )
-    profile = models.ForeignKey(
+    profile = models.OneToOneField(
         Profile,
         on_delete=models.CASCADE
     )
