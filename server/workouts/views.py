@@ -105,7 +105,7 @@ class CreateWorkoutPlanView(rest_generic_views.CreateAPIView):
 
     @staticmethod
     def validate_workout_plan_data(data):
-        if "workouts" not in data:
+        if "workouts" not in data or len(data['workouts']) <= 0:
             return Response("Workout plan must have workouts", status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request, *args, **kwargs):
@@ -118,6 +118,18 @@ class CreateWorkoutPlanView(rest_generic_views.CreateAPIView):
         except ValidationError as error:
             return Response(error.message,
                             status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeleteWorkoutPlanView(rest_generic_views.DestroyAPIView):
+    queryset = WorkoutPlan
+
+    def delete(self, request, *args, **kwargs):
+        workout_plan = WorkoutPlan.objects.get(pk=kwargs['id'])
+        request_user_profile = request.user.profile
+        if request_user_profile == workout_plan.created_by:
+            workout_plan.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response("You can only delete your own workouts!",status=status.HTTP_401_UNAUTHORIZED)
 
 
 # @api_view(["GET"])

@@ -15,5 +15,5 @@ urlpatterns = [
          name='forgotten password verify code'),
     path('forgotten-password/reset/', RessetPasswordView.as_view(), name='forgotten password reset'),
     path('verify-token/', VerifyAuthTokenView.as_view(), name='verify token'),
-    path('change-password/' ,ChangePasswordView.as_view(), name='change password'),
+    path('change-password/', ChangePasswordView.as_view(), name='change password'),
 ]

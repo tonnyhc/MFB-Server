@@ -1,11 +1,12 @@
+from django.core.exceptions import ValidationError
 from rest_framework import generics as rest_generic_views, status, serializers, views
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
 from server.utils import transform_timestamp
 from server.workouts.exercise_serializers import ExerciseDetailsSerializer, BaseExerciseSerializer, \
-    CreateExerciseSerializer
-from server.workouts.models import Exercise, ExerciseSession
+    CreateExerciseSerializer, ExerciseSessionEditSerializer
+from server.workouts.models import Exercise, ExerciseSession, Set
 
 
 class ExerciseDetailsView(rest_generic_views.RetrieveAPIView):
@@ -82,3 +83,40 @@ class GetExerciseProgress(views.APIView):
                 return_array.append(set_history_array)
             return_array.append([])
         return Response(return_array, status=status.HTTP_200_OK)
+
+
+class EditExerciseSessionView(rest_generic_views.UpdateAPIView):
+    serializer_class = ExerciseSessionEditSerializer
+
+    def put(self, request, *args, **kwargs):
+        session_id = kwargs.get('session_id')
+        sets = request.data.get('sets')
+        try:
+            session = ExerciseSession.objects.get(id=session_id)
+        except ExerciseSession.DoesNotExist:
+            return Response("Exercise session does not exist!", status=status.HTTP_400_BAD_REQUEST)
+        if session.profile != request.user.profile:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        session.sets.all().delete()
+        for set in sets:
+            try:
+                set_instance = Set.objects.get(id=set.get('id'))
+                Set.edit_data(set_instance=set_instance, set_data=set)
+                set_instance.save()
+            except Set.DoesNotExist:
+                try:
+                    set_instance = ExerciseSession.add_single_set_instance(request=self.request,
+                                                                           exercise_session=session, set_data=set)
+
+                except ValidationError as e:
+                    return Response(e.message, status=status.HTTP_400_BAD_REQUEST)
+                set_instance.save()
+                session.save()
+        session.save()
+
+        print(session.sets.all())
+
+        return Response("Exercise session updated successfully!", status=status.HTTP_200_OK)

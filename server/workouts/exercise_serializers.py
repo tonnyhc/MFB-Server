@@ -5,19 +5,13 @@ from server.workouts.set_serializers import SetDetailsSerializer
 
 
 class BaseExerciseSerializer(serializers.ModelSerializer):
-    cover_photo = serializers.SerializerMethodField()
     video_tutorial = serializers.SerializerMethodField()
 
     class Meta:
         model = Exercise
-        fields = ('id', 'name', 'cover_photo', 'targeted_muscle_groups',
+        fields = ('id', 'name', 'targeted_muscle_groups',
                   'information', 'video_tutorial', 'tips',
                   'created_by', 'created_at', 'is_published')
-
-    def get_cover_photo(self, obj):
-        if obj.cover_photo:
-            return obj.cover_photo.url
-        return None
 
     def get_video_tutorial(self, obj):
         if obj.video_tutorial:
@@ -60,6 +54,10 @@ class ExerciseSessionSerializerNameOnly(BaseExerciseSessionSerializer):
 
     def get_name(self, obj):
         return obj.exercise.name
+
+class ExerciseSessionEditSerializer(serializers.Serializer):
+    class Meta(BaseExerciseSessionSerializer.Meta):
+        fields = ('sets',)
 
 
 class CreateExerciseSerializer(BaseExerciseSerializer):

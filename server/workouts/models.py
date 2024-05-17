@@ -84,7 +84,7 @@ class Exercise(models.Model):
     name = models.CharField(
         max_length=MAX_LEN_NAME,
     )
-    cover_photo = CloudinaryField('image', blank=True, null=True)
+    # cover_photo = CloudinaryField('image', blank=True, null=True)
     targeted_muscle_groups = models.ManyToManyField(MuscleGroup)
     information = models.TextField(
         blank=True,
@@ -133,6 +133,8 @@ class ExerciseSession(models.Model):
         blank=True,
         null=True
     )
+
+    history = HistoricalRecords()
 
     @staticmethod
     def validate_sets(data):
@@ -197,13 +199,16 @@ class ExerciseSession(models.Model):
         current_sets = exercise_session.sets.all()
         max_set_index = current_sets.aggregate(Max('set_index'))['set_index__max']
         new_set_index = max_set_index + 1 if max_set_index is not None else 0
-
+        try:
+            is_valid = ExerciseSession.validate_sets([set_data])
+        except ValidationError as e:
+            raise ValidationError(e.message)
         set_instance = Set.objects.create(
             weight=set_data.get('weight', 0),
             reps=set_data.get('reps', 0),
-            min_reps=set_data.get('minReps', 0),
-            max_reps=set_data.get('maxReps', 0),
-            to_failure=set_data.get('failure', False),
+            min_reps=set_data.get('min_reps', 0),
+            max_reps=set_data.get('max_reps', 0),
+            to_failure=set_data.get('to_failure', False),
             bodyweight=set_data.get('bodyweight', False),
             set_index=new_set_index,
             created_by=request.user.profile
@@ -255,7 +260,6 @@ class WorkoutSession(models.Model):
             raise ValidationError("Provide a name for your workout")
         if len(exercises) == 0:
             raise ValidationError("Please add exercises to your workout")
-
         workout_session = WorkoutSession.objects.create(
             name=workout_name,
             total_exercises=len(exercises),
