@@ -16,7 +16,7 @@ class WorkoutsByUserListView(rest_generic_views.ListAPIView):
     serializer_class = BaseWorkoutPlanSerializer
 
     def get(self, request, *args, **kwargs):
-        query = self.queryset.filter(created_by_id=request.user.profile.id)
+        query = self.queryset.filter(created_by_id=request.user.profile.id).order_by('-created_at')
         serialized_query = self.serializer_class(query, many=True)
         return Response(serialized_query.data, status=status.HTTP_200_OK)
 
