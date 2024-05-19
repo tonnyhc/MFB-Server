@@ -1,7 +1,7 @@
 from pathlib import Path
 from decouple import config
 import cloudinary.api
-
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -83,9 +83,9 @@ EMAIL_HOST_USER = config("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
 
 cloudinary.config(
-  	cloud_name = config('CLOUDINARY_CLOUD_NAME'),
-  	api_key = config("CLOUDINARY_API_KEY"),
-  	api_secret = config("CLOUDINARY_API_SECRET"),
+    cloud_name=config('CLOUDINARY_CLOUD_NAME'),
+    api_key=config("CLOUDINARY_API_KEY"),
+    api_secret=config("CLOUDINARY_API_SECRET"),
 )
 
 # SITE_ID = 1
@@ -121,7 +121,7 @@ WSGI_APPLICATION = 'server.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": config('DATABASE_ENGINE'),
-        "NAME":config('DATABASE_NAME'),
+        "NAME": config('DATABASE_NAME'),
         "USER": config('DATABASE_USER'),
         "PASSWORD": config("DATABASE_PASSWORD"),
         "HOST": config('DATABASE_HOST'),
@@ -164,7 +164,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 AUTH_USER_MODEL = 'authentication.AppUser'
 
