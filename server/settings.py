@@ -15,7 +15,10 @@ SECRET_KEY = config("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", cast=bool)
 
-ALLOWED_HOSTS = ["beast-physique.com"]
+if DEBUG:
+    ALLOWED_HOSTS = ['*']
+else:
+    ALLOWED_HOSTS = ["beast-physique.com", '127.0.0.1', 'localhost']
 
 # ALLOWED_HOSTS += '192.168.0.4'
 

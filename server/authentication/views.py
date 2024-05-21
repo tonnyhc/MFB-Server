@@ -37,7 +37,7 @@ class LoginView(authtoken_views.ObtainAuthToken):
         token, created = authtoken_models.Token.objects.get_or_create(user=user)
 
         return Response({
-            # 'user_id': user.pk,
+            'user_id': user.pk,
             # 'username': user.username,
             'email': user.email,
             'is_verified': user.is_verified,
@@ -62,7 +62,8 @@ class RegisterView(rest_generic_views.CreateAPIView):
         data_for_serializer = {
             'email': email,
             'username': username,
-            'password': password
+            'password': password,
+            'is_verified': False,
         }
 
         serializer = self.serializer_class(data=data_for_serializer, context={'request': request})
@@ -75,7 +76,7 @@ class RegisterView(rest_generic_views.CreateAPIView):
             token, created = authtoken_models.Token.objects.get_or_create(user=user)
             return Response({
                 'token': token.key,
-                # 'user_id': user.pk,
+                'user_id': user.pk,
                 # 'username': user.username,
                 'email': user.email,
             }, status=status.HTTP_201_CREATED)
@@ -103,7 +104,6 @@ class LogoutView(rest_views.APIView):
 
 
 class ConfirmEmail(rest_views.APIView):
-
     def post(self, request, *args, **kwargs):
         code = request.data
         user = request.user
@@ -126,6 +126,7 @@ class ResentVerificationCode(rest_views.APIView):
         try:
             user = request.user
             send_confirmation_code_for_register(user)
+            # TODO: Check if the user is verified to not make new code`
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ObjectDoesNotExist:
             return Response("An unexpected problem occurred.", status=status.HTTP_400_BAD_REQUEST)
@@ -200,8 +201,10 @@ class RessetPasswordView(rest_views.APIView):
         except ObjectDoesNotExist:
             return Response('A problem occurred', status=status.HTTP_400_BAD_REQUEST)
 
+
 class ChangePasswordView(rest_views.APIView):
     serializer_class = ChangePasswordSerializer
+
     def put(self, request):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -214,16 +217,21 @@ class ChangePasswordView(rest_views.APIView):
         try:
             validate_password(new_password, user=user)
         except ValidationError as e:
-            return Response( e.messages, status=status.HTTP_400_BAD_REQUEST)
+            return Response(e.messages, status=status.HTTP_400_BAD_REQUEST)
         else:
             user.set_password(new_password)
             user.save()
             return Response('Password changed successfully', status=status.HTTP_204_NO_CONTENT)
 
 
-
-class VerifyAuthTokenView(rest_views.APIView):
+class VerifyAuthTokenAndGetUserDataView(rest_views.APIView):
 
     def get(self, request):
+        token = authtoken_models.Token.objects.get_or_create(user=request.user)[0]
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response({
+            'user_id': self.request.user.pk,
+            'email': self.request.user.email,
+            'is_verified': self.request.user.is_verified,
+            'token': token.key,
+        }, status=status.HTTP_200_OK)
