@@ -1,5 +1,9 @@
 import re
 
+from allauth.account.models import EmailAddress
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from dj_rest_auth.registration.views import SocialLoginView
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
@@ -13,6 +17,8 @@ from server.authentication.serializers import LoginSerializer, RegisterSerialize
     ConfirmVerificationCodeForPasswordResetSerializer, ResetPasswordSerializer, ChangePasswordSerializer
 from server.authentication.utils import send_confirmation_code_forgotten_password, send_confirmation_code_for_register
 from server.profiles.models import Profile
+
+# from server.profiles.models import Profile
 
 UserModel = get_user_model()
 
@@ -69,7 +75,9 @@ class RegisterView(rest_generic_views.CreateAPIView):
         serializer = self.serializer_class(data=data_for_serializer, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        # comented later
         Profile.objects.create_profile(user=user)
+        EmailAddress.objects.create(user=user, email=email, verified=False, primary=True)
 
         if user:
             login(request, user)
@@ -235,3 +243,9 @@ class VerifyAuthTokenAndGetUserDataView(rest_views.APIView):
             'is_verified': self.request.user.is_verified,
             'token': token.key,
         }, status=status.HTTP_200_OK)
+
+
+class GoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+    callback_url = "http://127.0.0.1:8000/accounts/google/login/callback/"
+    client_class = OAuth2Client

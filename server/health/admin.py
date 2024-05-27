@@ -7,6 +7,7 @@ from server.health.models import Measures, Fitness
 class MeasuresAdmin(admin.ModelAdmin):
     pass
 
+
 @admin.register(Fitness)
 class FitnessAdmin(admin.ModelAdmin):
     pass

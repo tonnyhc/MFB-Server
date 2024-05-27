@@ -43,6 +43,9 @@ class Measures(models.Model):
 
     history = HistoricalRecords()
 
+    def __str__(self):
+        return self.profile.user.username
+
 
 class Fitness(models.Model):
     activity = models.CharField(
@@ -63,3 +66,6 @@ class Fitness(models.Model):
         Profile,
         on_delete=models.CASCADE
     )
+
+    def __str__(self):
+        return self.profile.user.username
