@@ -4,7 +4,8 @@ from allauth.account.models import EmailAddress
 from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
 from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from dj_rest_auth.registration.views import SocialLoginView
-from django.contrib.auth import get_user_model, login
+from django.contrib.auth import get_user_model, login, authenticate
+from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from rest_framework import generics as rest_generic_views, views as rest_views, status
@@ -53,7 +54,7 @@ class LoginView(authtoken_views.ObtainAuthToken):
 
 class RegisterView(rest_generic_views.CreateAPIView):
     permission_classes = []
-    authentication_classes = []
+    authentication_classes = [ModelBackend]
     queryset = UserModel.objects.all()
     serializer_class = RegisterSerializer
 
@@ -80,14 +81,20 @@ class RegisterView(rest_generic_views.CreateAPIView):
         EmailAddress.objects.create(user=user, email=email, verified=False, primary=True)
 
         if user:
-            login(request, user)
-            token, created = authtoken_models.Token.objects.get_or_create(user=user)
-            return Response({
-                'token': token.key,
-                'user_id': user.pk,
-                # 'username': user.username,
-                'email': user.email,
-            }, status=status.HTTP_201_CREATED)
+            # added lated
+            authenticated_user = authenticate(request, username=user.email, password=password)
+            if authenticated_user:
+
+                login(request, authenticated_user)
+                token, created = authtoken_models.Token.objects.get_or_create(user=user)
+                return Response({
+                    'token': token.key,
+                    'user_id': user.pk,
+                    # 'username': user.username,
+                    'email': user.email,
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response("Invalid credentials", status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
