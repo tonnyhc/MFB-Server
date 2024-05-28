@@ -16,8 +16,9 @@ from rest_framework.response import Response
 from server.authentication.models import ConfirmationCode
 from server.authentication.serializers import LoginSerializer, RegisterSerializer, \
     ConfirmVerificationCodeForPasswordResetSerializer, ResetPasswordSerializer, ChangePasswordSerializer
-from server.authentication.utils import send_confirmation_code_forgotten_password, send_confirmation_code_for_register
+# from server.authentication.utils import send_confirmation_code_forgotten_password
 from server.profiles.models import Profile
+from server.tasks import send_confirmation_code_for_register, send_confirmation_code_forgotten_password
 
 # from server.profiles.models import Profile
 
@@ -137,7 +138,7 @@ class ResentVerificationCode(rest_views.APIView):
             user = request.user
             if user.is_verified:
                 return Response("User already verified", status=status.HTTP_400_BAD_REQUEST)
-            send_confirmation_code_for_register(user)
+            send_confirmation_code_for_register.delay(user.pk)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ObjectDoesNotExist:
             return Response("An unexpected problem occurred.", status=status.HTTP_400_BAD_REQUEST)
@@ -161,7 +162,7 @@ class ForgottenPasswordView(rest_views.APIView):
         except ObjectDoesNotExist:
             return Response('This email is not associated to any profile', status=status.HTTP_400_BAD_REQUEST)
 
-        send_confirmation_code_forgotten_password(user)
+        send_confirmation_code_forgotten_password.delay(user.pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

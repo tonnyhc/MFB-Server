@@ -1,0 +1,49 @@
+import random
+import string
+import time
+
+from celery import Celery, shared_task
+from django.contrib.auth import get_user_model
+from django.core.mail import send_mail
+
+from server import settings
+from server.authentication.models import ConfirmationCode
+
+UserModel = get_user_model()
+
+app = Celery('tasks', broker='redis://localhost:6379/0')
+
+
+@shared_task
+def send_confirmation_code_for_register(user_pk):
+    user = UserModel.objects.get(pk=user_pk)
+    code = ''.join(random.choices(string.digits, k=5))
+    try:
+        old_confirmation = ConfirmationCode.objects.get(user=user, type="AccountVerification")
+        code = old_confirmation.code
+    except ConfirmationCode.DoesNotExist:
+        ConfirmationCode.objects.create(user=user, code=code, type="AccountVerification")
+
+    subject = 'Confirm your email address!'
+    message = f"Your confirmation code is: {code}"
+    from_email = settings.EMAIL_HOST_USER
+    recipient_list = [user.email]
+    send_mail(subject, message, from_email, recipient_list)
+
+
+@shared_task
+def send_confirmation_code_forgotten_password(user_pk):
+    code = ''.join(random.choices(string.digits, k=5))
+    user = UserModel.objects.get(pk=user_pk)
+    try:
+        old_confirmation = ConfirmationCode.objects.get(user=user, type="ForgottenPassword")
+        code = old_confirmation.code
+    except ConfirmationCode.DoesNotExist:
+        code = ConfirmationCode.objects.create(user=user, code=code, type="ForgottenPassword"),
+
+    subject = "Reset your password!"
+    message = f"Your verification code is: {code}"
+    from_email = settings.EMAIL_HOST_USER
+    recipient_list = [user.email]
+    send_mail(subject, message, from_email, recipient_list)
+    return True
