@@ -3,11 +3,14 @@ import string
 import time
 
 from celery import Celery, shared_task
+from cloudinary.uploader import upload
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 
 from server import settings
 from server.authentication.models import ConfirmationCode
+from server.cloudinary import upload_to_cloudinary
+from server.profiles.models import Profile
 
 UserModel = get_user_model()
 
@@ -47,3 +50,19 @@ def send_confirmation_code_forgotten_password(user_pk):
     recipient_list = [user.email]
     send_mail(subject, message, from_email, recipient_list)
     return True
+
+
+@shared_task
+def upload_profile_picture_to_cloudinary_and_save_to_profile(image_url, profile_id):
+    try:
+        # Upload the image to Cloudinary
+        public_id = upload_to_cloudinary(image_url)
+
+        # Update the profile with the Cloudinary public ID
+        profile = Profile.objects.get(pk=profile_id)
+        profile.picture = public_id
+        profile.save()
+    except Profile.DoesNotExist:
+        # Handle the case where the profile object is not found
+        # Log the error or take appropriate action
+        pass
