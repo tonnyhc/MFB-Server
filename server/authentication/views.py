@@ -140,8 +140,9 @@ class ResentVerificationCode(rest_views.APIView):
     def get(self, request):
         try:
             user = request.user
+            if user.is_verified:
+                return Response("User already verified", status=status.HTTP_400_BAD_REQUEST)
             send_confirmation_code_for_register(user)
-            # TODO: Check if the user is verified to not make new code`
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ObjectDoesNotExist:
             return Response("An unexpected problem occurred.", status=status.HTTP_400_BAD_REQUEST)

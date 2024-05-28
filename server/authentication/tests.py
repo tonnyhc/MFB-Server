@@ -6,6 +6,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 from unittest import mock, TestCase
 
+from server.authentication.models import ConfirmationCode
 from server.profiles.models import Profile
 
 UserModel = get_user_model()
@@ -219,3 +220,62 @@ class LogoutViewApiTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn('detail', response.data)
         self.assertEqual(response.data['detail'], 'Invalid token.')
+
+
+class ConfirmEmailViewApiTestCase(APITestCase):
+    def setUp(self):
+        # first we must register the user
+        register_url = '/authentication/register/'
+        register_data = {
+            "username": "test",
+            "email": "test@example.com",
+            "password": "Test1234!"
+        }
+        response = self.client.post(register_url, register_data, format='json')
+        # getting the user's verification code from the base
+        self.user = UserModel.objects.get(email="test@example.com")
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + response.data.get('token'))
+        confirmation_code_instance = ConfirmationCode.objects.get(user=self.user, type='AccountVerification')
+        self.confirmation_code = confirmation_code_instance.code
+        self.url = '/authentication/verify-account/'  # Adjust the URL name as per your URL configuration
+
+    def test_confirm_email_with_valid_code(self):
+        response = self.client.post(self.url, self.confirmation_code, format='json')
+        self.assertEqual(response.data, "Email confirmed")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_confirm_email_with_invalid_code(self):
+        response = self.client.post(self.url, "invalid", format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, "Wrong confirmation code")
+
+class ForgottenPasswordViewTests(APITestCase):
+    def setUp(self):
+        self.user = UserModel.objects.create_user(email='test@example.com', password='test_password')
+        self.url = '/authentication/forgotten-password/'
+
+    def test_forgotten_password_success(self):
+        data = 'test@example.com'
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        # Add assertions to check for any side effects, such as the presence of an email confirmation record, if applicable
+
+    def test_forgotten_password_invalid_email_format(self):
+        data = 'invalid-email'
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, "Invalid email format")
+
+    def test_forgotten_password_non_existent_email(self):
+        data = 'nonexistent@example.com'
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, 'This email is not associated to any profile')
+
+    def test_forgotten_password_missing_email(self):
+        data = {}
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, "Invalid email format")
+
+
