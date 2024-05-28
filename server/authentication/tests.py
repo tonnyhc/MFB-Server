@@ -278,4 +278,82 @@ class ForgottenPasswordViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, "Invalid email format")
 
+class ConfirmVerificationCodeForPasswordResetTests(APITestCase):
+    def setUp(self):
+        self.user = UserModel.objects.create_user(email='test@example.com', password='test_password')
+        self.confirmation_code = ConfirmationCode.objects.create(user=self.user, code='12345', type='ForgottenPassword')
+        self.url = '/authentication/forgotten-password/verify-code/'  # Adjust the URL name as per your URL configuration
 
+    def test_confirm_verification_code_success(self):
+        data = {
+            'email': 'test@example.com',
+            'code': '12345'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_confirm_verification_code_invalid_code(self):
+        data = {
+            'email': 'test@example.com',
+            'code': 'invalid_code'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, "Invalid verification code")
+
+    def test_confirm_verification_code_non_existent_email(self):
+        data = {
+            'email': 'nonexistent@example.com',
+            'code': '123456'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, 'The email is not associated with any profile')
+
+    def test_confirm_verification_code_missing_fields(self):
+        data = {
+            'email': 'test@example.com'
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordViewTests(APITestCase):
+    def setUp(self):
+        self.user = UserModel.objects.create_user(email='test@example.com', password='old_password')
+        self.confirmation_code = ConfirmationCode.objects.create(user=self.user, code='12345', type='ForgottenPassword')
+        self.url = "/authentication/forgotten-password/reset/"
+
+    def test_reset_password_success(self):
+        data = {
+            'email': 'test@example.com',
+            'code': '12345',
+            'password': 'new_password',
+            "re_pass": "new_password"
+        }
+        response = self.client.post(self.url, data, format='json')
+        print(response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(UserModel.objects.get(email='test@example.com').check_password('new_password'), True)
+        self.assertEqual(ConfirmationCode.objects.filter(user=self.user, code='12345', type='ForgottenPassword').exists(), False)
+
+    def test_reset_password_invalid_code(self):
+        data = {
+            'email': 'test@example.com',
+            'code': 'invalid_code',
+            'password': 'new_password',
+            "re_pass": "new_password"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, "A problem occurred")
+
+    def test_reset_password_non_existent_email(self):
+        data = {
+            'email': 'nonexistent@example.com',
+            'code': '123456',
+            'password': 'new_password',
+            "re_pass": "new_password"
+        }
+        response = self.client.post(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

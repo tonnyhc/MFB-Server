@@ -208,7 +208,7 @@ class RessetPasswordView(rest_views.APIView):
 
         try:
             user = UserModel.objects.filter(email=email).get()
-            confirmation = ConfirmationCode.objects.filter(user=user, code=code, type="ForgottenPassword")
+            confirmation = ConfirmationCode.objects.filter(user=user, code=code, type="ForgottenPassword").get()
             user.set_password(password)
             user.save()
 
