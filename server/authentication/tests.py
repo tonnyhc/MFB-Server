@@ -1,11 +1,9 @@
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model, authenticate, login
 from django.contrib.auth.models import Group
-from django.urls import reverse
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
-from unittest import mock, TestCase
 
 from server.authentication.models import ConfirmationCode
 from server.profiles.models import Profile
