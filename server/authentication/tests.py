@@ -1,5 +1,5 @@
 from allauth.account.models import EmailAddress
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, authenticate, login
 from django.contrib.auth.models import Group
 from django.urls import reverse
 from rest_framework import status
@@ -45,7 +45,6 @@ class RegisterViewTests(APITestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('email', response.data)
-
 
     def test_register_duplicate_email(self):
         # Creating an user that already exists
@@ -96,7 +95,6 @@ class RegisterViewTests(APITestCase):
             'password': 'group_password',
             'groups': [group.id],  # Добавяне на групата към новия потребител
         }
-
 
 
 class LoginViewApiTestCase(APITestCase):
@@ -180,3 +178,44 @@ class LoginViewApiTestCase(APITestCase):
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('Invalid email/password', response.data)
+
+
+class LogoutViewApiTestCase(APITestCase):
+    def setUp(self):
+        self.user = UserModel.objects.create_user(email='test@example.com', password='test_password')
+        login_url = '/authentication/login/'
+        login_data = {
+            'email': 'test@example.com',
+            'password': 'test_password'
+        }
+        login_response = self.client.post(login_url, login_data, format='json')
+        self.token = login_response.data['token']
+
+    def test_logout_post_request(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token)
+        url = "/authentication/logout/"
+        response = self.client.post(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get('message'), 'User signed out')
+
+    def test_logout_get_request(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token)
+        url = "/authentication/logout/"
+        response = self.client.get(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get('message'), 'User signed out')
+
+    def test_logout_without_token(self):
+        url = "/authentication/logout/"
+        response = self.client.post(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn('detail', response.data)
+        self.assertEqual(response.data['detail'], 'Authentication credentials were not provided.')
+
+    def test_logout_with_invalid_token(self):
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + 'invalid_token')
+        url = "/authentication/logout/"
+        response = self.client.post(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertIn('detail', response.data)
+        self.assertEqual(response.data['detail'], 'Invalid token.')
