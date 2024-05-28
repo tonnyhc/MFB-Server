@@ -22,9 +22,7 @@ class RegisterViewTests(APITestCase):
 
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertIn('token', response.data)
-        self.assertIn('user_id', response.data)
-        self.assertEqual(response.data['email'], 'test@example.com')
+        self.assertIn('key', response.data)
 
         user = UserModel.objects.get(email='test@example.com')
         self.assertTrue(user.is_active)
@@ -109,9 +107,7 @@ class LoginViewApiTestCase(APITestCase):
         }
         response = self.client.post(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('token', response.data)
-        self.assertIn('user_id', response.data)
-        self.assertEqual(response.data['email'], 'test@example.com')
+        self.assertIn('key', response.data)
 
     def test_login_invalid_credentials(self):
         url = "/authentication/login/"

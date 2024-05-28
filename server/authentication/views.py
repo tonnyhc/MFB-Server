@@ -44,11 +44,8 @@ class LoginView(authtoken_views.ObtainAuthToken):
         token, created = authtoken_models.Token.objects.get_or_create(user=user)
 
         return Response({
-            'user_id': user.pk,
-            # 'username': user.username,
-            'email': user.email,
             'is_verified': user.is_verified,
-            'token': token.key,
+            'key': token.key,
         })
 
 
@@ -88,10 +85,8 @@ class RegisterView(rest_generic_views.CreateAPIView):
                 login(request, authenticated_user)
                 token, created = authtoken_models.Token.objects.get_or_create(user=user)
                 return Response({
-                    'token': token.key,
-                    'user_id': user.pk,
-                    # 'username': user.username,
-                    'email': user.email,
+                    'key': token.key,
+                    'is_verified': False
                 }, status=status.HTTP_201_CREATED)
             else:
                 return Response("Invalid credentials", status=status.HTTP_400_BAD_REQUEST)

@@ -47,7 +47,8 @@ SOCIALACCOUNT_PROVIDERS = {
         },
         'AUTH_PARAMS': {
             'access_type': 'online',
-        }
+        },
+        'FIELDS': ['id', 'email', 'name', 'gender']
     }
 }
 
