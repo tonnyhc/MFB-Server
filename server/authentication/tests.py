@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model, authenticate, login
 from django.contrib.auth.models import Group
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.authtoken.models import Token
 from rest_framework.test import APITestCase
 from unittest import mock, TestCase
 
@@ -249,6 +250,7 @@ class ConfirmEmailViewApiTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, "Wrong confirmation code")
 
+
 class ForgottenPasswordViewTests(APITestCase):
     def setUp(self):
         self.user = UserModel.objects.create_user(email='test@example.com', password='test_password')
@@ -277,6 +279,7 @@ class ForgottenPasswordViewTests(APITestCase):
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data, "Invalid email format")
+
 
 class ConfirmVerificationCodeForPasswordResetTests(APITestCase):
     def setUp(self):
@@ -335,7 +338,8 @@ class ResetPasswordViewTests(APITestCase):
         print(response.data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(UserModel.objects.get(email='test@example.com').check_password('new_password'), True)
-        self.assertEqual(ConfirmationCode.objects.filter(user=self.user, code='12345', type='ForgottenPassword').exists(), False)
+        self.assertEqual(
+            ConfirmationCode.objects.filter(user=self.user, code='12345', type='ForgottenPassword').exists(), False)
 
     def test_reset_password_invalid_code(self):
         data = {
@@ -357,3 +361,78 @@ class ResetPasswordViewTests(APITestCase):
         }
         response = self.client.post(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class ChangePasswordViewTests(APITestCase):
+    def setUp(self):
+        self.user = UserModel.objects.create_user(email='test@example.com', password='old_password')
+        self.url = '/authentication/change-password/'  # Adjust the URL name as per your URL configuration
+
+    def test_change_password_success(self):
+        self.client.force_authenticate(user=self.user)
+        data = {
+            'password': 'old_password',
+            'new_password': 'new_password'
+        }
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(UserModel.objects.get(email='test@example.com').check_password('new_password'), True)
+
+    def test_change_password_wrong_password(self):
+        self.client.force_authenticate(user=self.user)
+        data = {
+            'password': 'wrong_password',
+            'new_password': 'new_password'
+        }
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, 'Wrong password')
+
+    def test_change_password_weak_password(self):
+        self.client.force_authenticate(user=self.user)
+        data = {
+            'password': 'old_password',
+            'new_password': 'weak'
+        }
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, ['This password is too short. It must contain at least 8 characters.'])
+
+    # def test_change_password_same_password(self):
+    #     self.client.force_authenticate(user=self.user)
+    #     data = {
+    #         'password': 'old_password',
+    #         'new_password': 'old_password'
+    #     }
+    #     response = self.client.put(self.url, data, format='json')
+    #     self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+    #     self.assertEqual(response.data, ['The new password must be different from the old password.'])
+
+    def test_change_password_unauthenticated(self):
+        data = {
+            'password': 'old_password',
+            'new_password': 'new_password'
+        }
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class VerifyAuthTokenAndGetUserDataViewTests(APITestCase):
+    def setUp(self):
+        self.user = UserModel.objects.create_user(email='test@example.com', password='test_password')
+        token, created = Token.objects.get_or_create(user=self.user)
+        self.token = str(token)
+        self.url = '/authentication/verify-token/'  # Adjust the URL name as per your URL configuration
+
+    def test_verify_auth_token_and_get_user_data_success(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['user_id'], self.user.pk)
+        self.assertEqual(response.data['email'], self.user.email)
+        self.assertEqual(response.data['is_verified'], self.user.is_verified)
+        self.assertEqual(response.data['token'], self.token)
+
+    def test_verify_auth_token_and_get_user_data_unauthenticated(self):
+        response = self.client.get(self.url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
