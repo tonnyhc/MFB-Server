@@ -4,7 +4,7 @@ from django.core import exceptions
 from django.core.exceptions import ValidationError
 from rest_framework import serializers
 
-from server.tasks import send_confirmation_code_for_register
+from server.authentication.tasks import send_confirmation_code_for_register
 
 # from server.authentication.utils import send_confirmation_code_for_register
 

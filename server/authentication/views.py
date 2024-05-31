@@ -18,7 +18,7 @@ from server.authentication.serializers import LoginSerializer, RegisterSerialize
     ConfirmVerificationCodeForPasswordResetSerializer, ResetPasswordSerializer, ChangePasswordSerializer
 # from server.authentication.utils import send_confirmation_code_forgotten_password
 from server.profiles.models import Profile
-from server.tasks import send_confirmation_code_for_register, send_confirmation_code_forgotten_password
+from server.authentication.tasks import send_confirmation_code_for_register, send_confirmation_code_forgotten_password
 
 # from server.profiles.models import Profile
 
@@ -85,6 +85,7 @@ class RegisterView(rest_generic_views.CreateAPIView):
 
                 login(request, authenticated_user)
                 token, created = authtoken_models.Token.objects.get_or_create(user=user)
+                send_confirmation_code_for_register.delay(authenticated_user.pk)
                 return Response({
                     'key': token.key,
                     'is_verified': False

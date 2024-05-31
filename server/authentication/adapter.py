@@ -1,9 +1,8 @@
 from allauth.account.utils import user_email, user_field
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
 
-from server.cloudinary import upload_to_cloudinary
 from server.profiles.models import Profile
-from server.tasks import upload_profile_picture_to_cloudinary_and_save_to_profile
+from server.authentication.tasks import upload_profile_picture_to_cloudinary_and_save_to_profile
 
 
 class CustomSocialAccountAdapter(DefaultSocialAccountAdapter):

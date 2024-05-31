@@ -1,9 +1,7 @@
 import random
 import string
-import time
 
 from celery import Celery, shared_task
-from cloudinary.uploader import upload
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 
