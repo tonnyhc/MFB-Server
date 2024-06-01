@@ -1,5 +1,6 @@
 import random
 import string
+import logging
 
 from celery import Celery, shared_task
 from django.contrib.auth import get_user_model
@@ -10,26 +11,29 @@ from server.authentication.models import ConfirmationCode
 from server.cloudinary import upload_to_cloudinary
 from server.profiles.models import Profile
 
+
+logger = logging.getLogger('server')
 UserModel = get_user_model()
 
 app = Celery('tasks', broker='redis://localhost:6379/0')
 
 
 @shared_task
-def send_confirmation_code_for_register(user_pk):
+def send_confirmation_code_for_register(code_pk, user_pk):
+    print(code_pk, user_pk)
+    code_instance = ConfirmationCode.objects.get(pk=code_pk)
+    code = code_instance.code
     user = UserModel.objects.get(pk=user_pk)
-    code = ''.join(random.choices(string.digits, k=5))
-    try:
-        old_confirmation = ConfirmationCode.objects.get(user=user, type="AccountVerification")
-        code = old_confirmation.code
-    except ConfirmationCode.DoesNotExist:
-        ConfirmationCode.objects.create(user=user, code=code, type="AccountVerification")
-
+    print(code)
     subject = 'Confirm your email address!'
     message = f"Your confirmation code is: {code}"
     from_email = settings.EMAIL_HOST_USER
     recipient_list = [user.email]
-    send_mail(subject, message, from_email, recipient_list)
+    try:
+        send_mail(subject, message, from_email, recipient_list)
+        print('Confirmation email sent successfully!')
+    except Exception as e:
+        print(f'Failed to send confirmation email: {e}')
 
 
 @shared_task

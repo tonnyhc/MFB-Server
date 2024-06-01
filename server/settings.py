@@ -52,7 +52,7 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
 
 # Application definition
 
@@ -159,6 +159,11 @@ DATABASES = {
         "PORT": config("DATABASE_PORT"),
     }
 }
+
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators

@@ -14,4 +14,9 @@ app = Celery('your_project')  # Replace 'your_project' with your project's name.
 app.config_from_object('django.conf:settings', namespace='CELERY')
 
 # Load tasks from all registered Django app configs.
-app.autodiscover_tasks(lambda: settings.INSTALLED_APPS)
+app.autodiscover_tasks()
+
+
+@app.task(bind=True)
+def debug_task(self):
+    print('Request: {0!r}', format(self.request))

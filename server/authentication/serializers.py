@@ -54,7 +54,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=password,
         )
 
-        send_confirmation_code_for_register.delay(user.pk)
+        # send_confirmation_code_for_register.delay(user.pk)
 
         return user
 

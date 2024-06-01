@@ -16,11 +16,9 @@ from rest_framework.response import Response
 from server.authentication.models import ConfirmationCode
 from server.authentication.serializers import LoginSerializer, RegisterSerializer, \
     ConfirmVerificationCodeForPasswordResetSerializer, ResetPasswordSerializer, ChangePasswordSerializer
-# from server.authentication.utils import send_confirmation_code_forgotten_password
+from server.authentication.utils import generate_confirmation_code
 from server.profiles.models import Profile
 from server.authentication.tasks import send_confirmation_code_for_register, send_confirmation_code_forgotten_password
-
-# from server.profiles.models import Profile
 
 UserModel = get_user_model()
 
@@ -85,7 +83,7 @@ class RegisterView(rest_generic_views.CreateAPIView):
 
                 login(request, authenticated_user)
                 token, created = authtoken_models.Token.objects.get_or_create(user=user)
-                send_confirmation_code_for_register.delay(authenticated_user.pk)
+                # send_confirmation_code_for_register.delay(authenticated_user.pk)
                 return Response({
                     'key': token.key,
                     'is_verified': False
@@ -137,9 +135,11 @@ class ResentVerificationCode(rest_views.APIView):
     def get(self, request):
         try:
             user = request.user
+
             if user.is_verified:
                 return Response("User already verified", status=status.HTTP_400_BAD_REQUEST)
-            send_confirmation_code_for_register.delay(user.pk)
+            code = generate_confirmation_code(user_pk=user.pk)
+            send_confirmation_code_for_register.delay(code.pk, user.pk)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ObjectDoesNotExist:
             return Response("An unexpected problem occurred.", status=status.HTTP_400_BAD_REQUEST)
@@ -246,7 +246,7 @@ class VerifyAuthTokenAndGetUserDataView(rest_views.APIView):
             'user_id': self.request.user.pk,
             'email': self.request.user.email,
             'is_verified': self.request.user.is_verified,
-            'token': token.key,
+            'key': token.key,
         }, status=status.HTTP_200_OK)
 
 
