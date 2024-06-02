@@ -1,7 +1,7 @@
 from django.urls import path, include
 
 from server.profiles.views import LoggedInProfileDetailsView, ProfileEditView, ProfileSetupFullNameView, \
-    ProfileSetupGenderView, ProfileBirthDaySetupView, FullnameAndFullnameValidatorsView, UsernameAndValidatorsView, \
+    ProfileSetupGenderView, FullnameAndFullnameValidatorsView, UsernameAndValidatorsView, \
     BioAndValidatorsView, BirthdayAndValidatorsView, ProfilePictureView
 
 urlpatterns = [
@@ -14,7 +14,7 @@ urlpatterns = [
     path('setup/', include([
         path('full-name/', ProfileSetupFullNameView.as_view(), name='setup full name'),
         path('gender/', ProfileSetupGenderView.as_view(), name='setup gender'),
-        path('birthday/', ProfileBirthDaySetupView.as_view(), name='setup birthday')
+        # path('birthday/', ProfileBirthDaySetupView.as_view(), name='setup birthday')
     ])),
     path('edit/', ProfileEditView.as_view(), name='edit profile'),
 ]

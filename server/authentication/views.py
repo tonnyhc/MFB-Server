@@ -122,7 +122,6 @@ class ConfirmEmail(rest_views.APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST)
         if not code:
             return Response(status=status.HTTP_400_BAD_REQUEST)
-
         confirmation = UserModel.objects.confirm_email(user, code)
         if not confirmation:
             return Response("Wrong confirmation code", status=status.HTTP_400_BAD_REQUEST)
@@ -173,6 +172,8 @@ class ConfirmVerificationCodeForPasswordReset(rest_views.APIView):
     serializer_class = ConfirmVerificationCodeForPasswordResetSerializer
 
     def post(self, request):
+        print(request.data.get('email'))
+        print(request.data.get('code'))
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -245,6 +246,7 @@ class VerifyAuthTokenAndGetUserDataView(rest_views.APIView):
         return Response({
             'user_id': self.request.user.pk,
             'email': self.request.user.email,
+            'username': self.request.user.username,
             'is_verified': self.request.user.is_verified,
             'key': token.key,
         }, status=status.HTTP_200_OK)

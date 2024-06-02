@@ -30,12 +30,13 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_active', True)
         return self.create_user(email, password, **extra_fields)
 
-    def confirm_email(self, user, code):
+    @staticmethod
+    def confirm_email(user, code):
         if not user:
             return False
 
         try:
-            confirmation = user.confirmationcode_set.get(type="AccountVerification")
+            confirmation = user.confirmationcode_set.filter(type="AccountVerification").first()
         except ConfirmationCode.DoesNotExist:
             return False
 
@@ -44,7 +45,8 @@ class CustomUserManager(BaseUserManager):
 
         user.is_verified = True
         user.save()
-        confirmation.delete()
+        user.confirmationcode_set.filter(type="AccountVerification").delete()
+        # confirmation.delete()
         return True
 
 
@@ -109,3 +111,6 @@ class ConfirmationCode(models.Model):
         choices=ConfirmationCodeTypeChoices.choices(),
         max_length=ConfirmationCodeTypeChoices.max_len()
     )
+
+    def __str__(self):
+        return self.code

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #000;
+            text-align: center;
+        }
+        p {
+            margin: 15px 0;
+        }
+        .code-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .code {
+            display: inline-block;
+            background-color: #000;
+            color: #fff;
+            padding: 10px 20px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 8px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+{#        <h1>Потвърждение на акаунт</h1>#}
+        <h1>Confirm your account</h1>
+{#        <p>Здравейте,</p>#}
+        <p>Welcome, </p>
+{#        <p>Благодарим ви, че се регистрирахте на нашия сайт. За да активирате вашия акаунт, моля използвайте следния код:</p>#}
+        <p>Thank you for choosing Fitlette. In order to activate your account copy the code bellow and paste it in the app.</p>
+        <div class="code-container">
+            <span class="code">{{ activation_code }}</span>
+        </div>
+{#        <p>Ако не сте направили тази регистрация, игнорирайте този имейл.</p>#}
+        <p>If you haven't made that account, ignore the email</p>
+{#        <p class="footer">Поздрави,<br>Екипът на вашия сайт</p>#}
+        <p class="footer">Best regards,<br>Fitlette team</p>
+            </div>
+</body>
+</html>

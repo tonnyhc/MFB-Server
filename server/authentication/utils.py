@@ -11,7 +11,7 @@ def generate_confirmation_code(user_pk):
     code = ''.join(random.choices(string.digits, k=5))
     user = UserModel.objects.get(pk=user_pk)
     try:
-        old_confirmation = ConfirmationCode.objects.get(user=user, type="AccountVerification")
+        old_confirmation = ConfirmationCode.objects.filter(user=user, type="AccountVerification").get()
         return old_confirmation
     except ConfirmationCode.DoesNotExist:
         code = ConfirmationCode.objects.create(user=user, code=code, type="AccountVerification")
