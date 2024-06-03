@@ -161,7 +161,10 @@ class MuscleGroupsListView(rest_generic_views.ListAPIView):
     serializer_class = BaseMuscleGroupSerializer
 
     def get(self, request, *args, **kwargs):
-        return self.queryset.order_by('name')
+        ordered_muscle_groups = self.queryset.order_by('name')
+        return Response({
+            'muscle_groups': self.serializer_class(ordered_muscle_groups, many=True).data
+        })
 
 
 class ExercisesByMuscleGroup(views.APIView):

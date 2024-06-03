@@ -11,6 +11,7 @@ urlpatterns = [
     path('birthday/', BirthdayAndValidatorsView.as_view(), name='profile birthday'),
     path('profile-picture/', ProfilePictureView.as_view(), name='profile picture'),
     path('user-profile/', LoggedInProfileDetailsView.as_view(), name='logged in profile details'),
+    path('gender/', ProfileSetupGenderView.as_view(), name='profile setup gender'),
     path('setup/', include([
         path('full-name/', ProfileSetupFullNameView.as_view(), name='setup full name'),
         path('gender/', ProfileSetupGenderView.as_view(), name='setup gender'),

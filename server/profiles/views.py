@@ -61,9 +61,9 @@ class ProfileSetupFullNameView(rest_generic_views.UpdateAPIView):
         return Profile.objects.filter(user=self.request.user).first()
 
 
-class ProfileSetupGenderView(rest_generic_views.UpdateAPIView):
+class ProfileSetupGenderView(views.APIView):
     def put(self, request, *args, **kwargs):
-        profile_instance = self.get_queryset()
+        profile_instance = self.request.user.profile
         data = request.data
         if not profile_instance:
             return Response("An unexpected error occurred!", status=status.HTTP_400_BAD_REQUEST)
@@ -73,8 +73,9 @@ class ProfileSetupGenderView(rest_generic_views.UpdateAPIView):
         profile_instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def get_queryset(self):
-        return Profile.objects.filter(user=self.request.user).first()
+    def get(self, request):
+        gender = self.request.user.profile.gender
+        return Response({"gender": gender}, status=status.HTTP_200_OK)
 
 
 # class ProfileBirthDaySetupView(rest_generic_views.UpdateAPIView):
@@ -200,8 +201,8 @@ class ProfilePictureView(views.APIView):
         encoded_picture = base64.b64encode(new_picture.read()).decode('utf-8')
         # sending the encoded base64 to celery
         upload_profile_picture_to_cloudinary_and_save_to_profile.delay(encoded_picture, profile.pk)
-        # return Response(status=status.HTTP_202_ACCEPTED)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_202_ACCEPTED)
+        # return Response(status=status.HTTP_204_NO_CONTENT)
 
     def delete(self, request):
         profile = request.user.profile

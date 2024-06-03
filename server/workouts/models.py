@@ -80,19 +80,21 @@ class MuscleGroup(models.Model):
 
 
 class Exercise(models.Model):
+    MAX_LEN_TIPS = 255
     MAX_LEN_NAME = 50
     name = models.CharField(
         max_length=MAX_LEN_NAME,
     )
     # cover_photo = CloudinaryField('image', blank=True, null=True)
     targeted_muscle_groups = models.ManyToManyField(MuscleGroup)
-    information = models.TextField(
+    instructions = models.TextField(
         blank=True,
         null=True
     )
 
     video_tutorial = CloudinaryField(resource_type="video", blank=True, null=True)
-    tips = models.TextField(
+    tips_and_tricks = models.TextField(
+        max_length=MAX_LEN_TIPS,
         blank=True,
         null=True,
     )
