@@ -1,3 +1,5 @@
+import time
+
 from django.core.exceptions import ValidationError
 from rest_framework import generics as rest_generic_views, status, views
 from rest_framework.decorators import api_view
@@ -161,6 +163,7 @@ class MuscleGroupsListView(rest_generic_views.ListAPIView):
     serializer_class = BaseMuscleGroupSerializer
 
     def get(self, request, *args, **kwargs):
+
         ordered_muscle_groups = self.queryset.order_by('name')
         return Response({
             'muscle_groups': self.serializer_class(ordered_muscle_groups, many=True).data

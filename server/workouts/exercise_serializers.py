@@ -10,8 +10,8 @@ class BaseExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercise
         fields = ('id', 'name', 'targeted_muscle_groups',
-                  'information', 'video_tutorial', 'tips',
-                  'created_by', 'created_at', 'is_published')
+                  'instructions', 'video_tutorial', 'tips_and_tricks',
+                  'created_by', 'created_at', 'is_published', 'is_cardio')
 
     def get_video_tutorial(self, obj):
         if obj.video_tutorial:

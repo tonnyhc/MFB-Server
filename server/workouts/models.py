@@ -86,7 +86,8 @@ class Exercise(models.Model):
         max_length=MAX_LEN_NAME,
     )
     # cover_photo = CloudinaryField('image', blank=True, null=True)
-    targeted_muscle_groups = models.ManyToManyField(MuscleGroup)
+    targeted_muscle_groups = models.ManyToManyField(MuscleGroup, blank=True,
+                                                    null=True)
     instructions = models.TextField(
         blank=True,
         null=True
@@ -112,6 +113,11 @@ class Exercise(models.Model):
     )
     is_published = models.BooleanField(
         default=False
+    )
+    is_cardio = models.BooleanField(
+        blank=True,
+        null=True,
+        default=False,
     )
 
     def __str__(self):

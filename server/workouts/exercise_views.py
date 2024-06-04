@@ -7,6 +7,8 @@ from server.utils import transform_timestamp
 from server.workouts.exercise_serializers import ExerciseDetailsSerializer, BaseExerciseSerializer, \
     CreateExerciseSerializer, ExerciseSessionEditSerializer
 from server.workouts.models import Exercise, ExerciseSession, Set
+from .tasks import upload_exercise_video_to_cloudinary
+import base64
 
 
 class ExerciseDetailsView(rest_generic_views.RetrieveAPIView):
@@ -45,6 +47,31 @@ class CreateExerciseView(rest_generic_views.CreateAPIView):
         return serializer.save(created_by=user_profile)
 
     def post(self, request, *args, **kwargs):
+        print(request.data)
+        try:
+            exercise_data = request.data
+            to_publish = request.data.get('publish')
+            video = request.data.get('video_tutorial')
+            serializer = self.serializer_class(data=exercise_data)
+            serializer.is_valid(raise_exception=True)
+            exercise = self.perform_create(serializer)
+            if to_publish:
+                exercise.is_published = True
+                exercise.save()
+
+            if video:
+                # Save video to a temporary location
+                encoded_video = base64.b64encode(video.read()).decode('utf-8')
+
+                # Trigger Celery task to upload video to Cloudinary
+                upload_exercise_video_to_cloudinary.delay(encoded_video, exercise.id)
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except serializers.ValidationError as e:
+            print(e)
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def old_post(self, request, *args, **kwargs):
         try:
             exercise_data = request.data
 
