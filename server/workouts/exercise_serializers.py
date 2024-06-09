@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from server.workouts.models import Exercise, ExerciseSession
-from server.workouts.set_serializers import SetDetailsSerializer
+from server.workouts.models import Exercise, ExerciseSession, Rest, Set, Interval
+from server.workouts.set_serializers import SetDetailsSerializer, RestDetailsSerializer, IntervalDetailsSerializer
 
 
 class BaseExerciseSerializer(serializers.ModelSerializer):
@@ -41,10 +41,24 @@ class BaseExerciseSessionSerializer(serializers.ModelSerializer):
 
 
 class ExerciseSessionDetailsSerializer(BaseExerciseSessionSerializer):
-    # sets = SetDetailsSerializer(many=True)
+    session_data = serializers.SerializerMethodField()
 
     class Meta(BaseExerciseSessionSerializer.Meta):
         fields = BaseExerciseSessionSerializer.Meta.fields
+
+    def get_session_data(self, obj):
+        exercise_session_items = obj.exercisesessionitem_set.all()
+        final_list = []
+        for instance in exercise_session_items:
+            model_class = instance.content_type.model_class()
+            if model_class == Rest:
+                final_list.append(RestDetailsSerializer(instance.item).data)
+            elif model_class == Set:
+                final_list.append(SetDetailsSerializer(instance.item).data)
+            elif model_class == Interval:
+                final_list.append(IntervalDetailsSerializer(instance.item).data)
+
+        return final_list
 
 
 class ExerciseSessionSerializerNameOnly(BaseExerciseSessionSerializer):

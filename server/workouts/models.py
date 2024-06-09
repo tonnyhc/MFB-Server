@@ -96,6 +96,20 @@ class Set(models.Model):
         ordering = ['set_index']
 
 
+class Interval(models.Model):
+    time = models.PositiveIntegerField()
+    distance = models.PositiveIntegerField()
+    level = models.PositiveIntegerField()
+    pace = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
+
+    index_in_session = models.PositiveIntegerField(
+        default=0
+    )
+
+
 class Exercise(models.Model):
     MAX_LEN_TIPS = 255
     MAX_LEN_NAME = 50
@@ -199,29 +213,6 @@ class ExerciseSession(models.Model):
             exercise_session.sets.add(set_instance)
         return sets_array
 
-    # @staticmethod
-    # def create_session(request, exercise_name, sets_data):
-    #     try:
-    #
-    #         exercise = Exercise.objects.get(name=exercise_name)
-    #
-    #     except Exercise.DoesNotExist:
-    #         raise ValidationError("There was a problem selecting the exercise - " + exercise_name)
-    #
-    #     with transaction.atomic():
-    #         exercise_session = ExerciseSession.objects.create(
-    #             profile=request.user.profile,
-    #             exercise=exercise,
-    #         )
-    #
-    #         sets_array = ExerciseSession.create_sets(request, exercise_session, sets_data)
-    #
-    #         # If there was an error creating sets, rollback the transaction
-    #         if not sets_array:
-    #             raise ValidationError("Failed to create sets for the session.")
-    #
-    #     return exercise_session
-
     # TODO :NEW
     @staticmethod
     def create_session(request, exercise_name: str, exercise_id: int, session_data):
@@ -241,6 +232,8 @@ class ExerciseSession(models.Model):
                     ExerciseSession.add_set(request, exercise_session, item['data'])
                 elif item['type'] == 'rest':
                     ExerciseSession.add_rest(request, exercise_session, item['data'])
+                elif item['type'] == 'cardio':
+                    ExerciseSession.add_interval(request, exercise_session, item['data'])
 
         return exercise_session
 
@@ -286,15 +279,6 @@ class ExerciseSession(models.Model):
     # added later
     @staticmethod
     def add_set(request, exercise_session, set_data):
-        # set_instance = Set.objects.create(
-        #     weight=set_data.get('weight', 0),
-        #     reps=set_data.get('reps', 0),
-        #     min_reps=set_data.get('min_reps', 0),
-        #     max_reps=set_data.get('max_reps', 0),
-        #     to_failure=set_data.get('to_failure', False),
-        #     bodyweight=set_data.get('bodyweight', False),
-        #     created_by=request.user.profile
-        # )
         set_instance = Set.objects.create(
             weight=float(set_data.get('weight', 0)),
             reps=int(set_data.get('reps', 0)),
@@ -329,6 +313,24 @@ class ExerciseSession(models.Model):
             order=ExerciseSessionItem.objects.filter(exercise_session=exercise_session).count()
         )
         return rest_instance
+
+    @staticmethod
+    def add_interval(request, exercise_session, interval_data):
+        interval_instance = Interval.objects.create(
+            time=interval_data.get('time', 0),
+            distance=interval_data.get('distance', 0),
+            level=interval_data.get('level', 0),
+            pace=interval_data.get('pace', 0),
+            created_by=request.user.profile
+        )
+        content_type = ContentType.objects.get_for_model(interval_instance)
+        ExerciseSessionItem.objects.create(
+            exercise_session=exercise_session,
+            content_type=content_type,
+            object_id=interval_instance.id,
+            order=ExerciseSessionItem.objects.filter(exercise_session=exercise_session).count()
+        )
+        return interval_instance
 
 
 # added later
@@ -399,36 +401,6 @@ class WorkoutSession(models.Model):
         workout_session.save()
 
         return workout_session
-
-    # @staticmethod
-    # def create_session(request, workout_name, exercises):
-    #     if not workout_name:
-    #         raise ValidationError("Provide a name for your workout")
-    #     if len(exercises) == 0:
-    #         raise ValidationError("Please add exercises to your workout")
-    #     workout_session = WorkoutSession.objects.create(
-    #         name=workout_name,
-    #         total_exercises=len(exercises),
-    #         total_sets=0,
-    #         total_weight_volume=0,
-    #         created_by=request.user.profile
-    #     )
-    #
-    #     for exercise_data in exercises:
-    #         exercise = exercise_data['exercise']
-    #         session_data = exercise_data['session_data']
-    #         exercise_session = ExerciseSession.create_session(request, exercise['name'], session_data)
-    #         workout_session.exercises.add(exercise_session)
-    #
-    #     workout_session.total_sets = workout_session.exercises.aggregate(total_sets=models.Count('sets'))[
-    #                                      'total_sets'] or 0
-    #     workout_session.total_weight_volume = \
-    #         workout_session.exercises.aggregate(
-    #             total_weight_volume=models.Sum(models.F('sets__weight') * models.F('sets__reps')))[
-    #             'total_weight_volume']
-    #     workout_session.save()
-    #
-    #     return workout_session
 
     @staticmethod
     def publish_workout(request, workout_id):
