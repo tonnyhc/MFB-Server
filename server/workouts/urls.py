@@ -1,11 +1,11 @@
 from django.urls import path, include
 
 from server.workouts.exercise_views import CreateExerciseView, ExerciseDetailsView, SearchExerciseView, \
-    GetExerciseProgress, EditExerciseSessionView
+    GetExerciseProgress, EditExerciseSessionView, ExercisesByMuscleGroup
 from server.workouts.set_views import AddSetToExerciseSession, RemoveSetFromExerciseSession, EditSet
 from server.workouts.views import CreateWorkoutPlanView, WorkoutsByUserListView, \
     WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, CreateWorkoutView, \
-    ExercisesByMuscleGroup, MuscleGroupsListView, WorkoutSearchView, WorkoutSessionEditView, DeleteWorkoutPlanView
+     MuscleGroupsListView, WorkoutSearchView, WorkoutSessionEditView, DeleteWorkoutPlanView
 
 urlpatterns = [
     path('workout-plan/', include([

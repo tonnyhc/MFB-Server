@@ -28,6 +28,7 @@ class ExerciseDetailsSerializer(BaseExerciseSerializer):
         # Customize targeted_muscle_groups to include names instead of ids
         targeted_muscle_groups = instance.targeted_muscle_groups.all()
         representation['targeted_muscle_groups'] = [group.name for group in targeted_muscle_groups]
+        representation['created_by'] = instance.created_by.user.username if instance.created_by else None
         return representation
 
 
@@ -40,7 +41,7 @@ class BaseExerciseSessionSerializer(serializers.ModelSerializer):
 
 
 class ExerciseSessionDetailsSerializer(BaseExerciseSessionSerializer):
-    sets = SetDetailsSerializer(many=True)
+    # sets = SetDetailsSerializer(many=True)
 
     class Meta(BaseExerciseSessionSerializer.Meta):
         fields = BaseExerciseSessionSerializer.Meta.fields
