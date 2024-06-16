@@ -232,7 +232,7 @@ class ExerciseSession(models.Model):
                     ExerciseSession.add_set(request, exercise_session, item['data'])
                 elif item['type'] == 'rest':
                     ExerciseSession.add_rest(request, exercise_session, item['data'])
-                elif item['type'] == 'cardio':
+                elif item['type'] == 'intervaL':
                     ExerciseSession.add_interval(request, exercise_session, item['data'])
 
         return exercise_session
@@ -375,6 +375,7 @@ class WorkoutSession(models.Model):
         workout_session = WorkoutSession.objects.create(
             name=workout_name,
             total_exercises=len(exercises),
+            # TODO: Move the total_set and total_weight volume to a signal
             total_sets=0,
             total_weight_volume=0,
             created_by=request.user.profile
