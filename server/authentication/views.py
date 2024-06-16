@@ -1,6 +1,11 @@
 import re
 
-from django.contrib.auth import get_user_model, login
+from allauth.account.models import EmailAddress
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from dj_rest_auth.registration.views import SocialLoginView
+from django.contrib.auth import get_user_model, login, authenticate
+from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from rest_framework import generics as rest_generic_views, views as rest_views, status
@@ -11,8 +16,9 @@ from rest_framework.response import Response
 from server.authentication.models import ConfirmationCode
 from server.authentication.serializers import LoginSerializer, RegisterSerializer, \
     ConfirmVerificationCodeForPasswordResetSerializer, ResetPasswordSerializer, ChangePasswordSerializer
-from server.authentication.utils import send_confirmation_code_forgotten_password, send_confirmation_code_for_register
+from server.authentication.utils import generate_confirmation_code
 from server.profiles.models import Profile
+from server.authentication.tasks import send_confirmation_code_for_register, send_confirmation_code_forgotten_password
 
 UserModel = get_user_model()
 
@@ -37,17 +43,14 @@ class LoginView(authtoken_views.ObtainAuthToken):
         token, created = authtoken_models.Token.objects.get_or_create(user=user)
 
         return Response({
-            'user_id': user.pk,
-            # 'username': user.username,
-            'email': user.email,
             'is_verified': user.is_verified,
-            'token': token.key,
+            'key': token.key,
         })
 
 
 class RegisterView(rest_generic_views.CreateAPIView):
     permission_classes = []
-    authentication_classes = []
+    authentication_classes = [ModelBackend]
     queryset = UserModel.objects.all()
     serializer_class = RegisterSerializer
 
@@ -69,17 +72,24 @@ class RegisterView(rest_generic_views.CreateAPIView):
         serializer = self.serializer_class(data=data_for_serializer, context={'request': request})
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        # comented later
         Profile.objects.create_profile(user=user)
+        EmailAddress.objects.create(user=user, email=email, verified=False, primary=True)
 
         if user:
-            login(request, user)
-            token, created = authtoken_models.Token.objects.get_or_create(user=user)
-            return Response({
-                'token': token.key,
-                'user_id': user.pk,
-                # 'username': user.username,
-                'email': user.email,
-            }, status=status.HTTP_201_CREATED)
+            # added lated
+            authenticated_user = authenticate(request, username=user.email, password=password)
+            if authenticated_user:
+
+                login(request, authenticated_user)
+                token, created = authtoken_models.Token.objects.get_or_create(user=user)
+                # send_confirmation_code_for_register.delay(authenticated_user.pk)
+                return Response({
+                    'key': token.key,
+                    'is_verified': False
+                }, status=status.HTTP_201_CREATED)
+            else:
+                return Response("Invalid credentials", status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -112,7 +122,6 @@ class ConfirmEmail(rest_views.APIView):
             return Response(status=status.HTTP_400_BAD_REQUEST)
         if not code:
             return Response(status=status.HTTP_400_BAD_REQUEST)
-
         confirmation = UserModel.objects.confirm_email(user, code)
         if not confirmation:
             return Response("Wrong confirmation code", status=status.HTTP_400_BAD_REQUEST)
@@ -125,8 +134,11 @@ class ResentVerificationCode(rest_views.APIView):
     def get(self, request):
         try:
             user = request.user
-            send_confirmation_code_for_register(user)
-            # TODO: Check if the user is verified to not make new code`
+
+            if user.is_verified:
+                return Response("User already verified", status=status.HTTP_400_BAD_REQUEST)
+            code = generate_confirmation_code(user_pk=user.pk)
+            send_confirmation_code_for_register.delay(code.pk, user.pk)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ObjectDoesNotExist:
             return Response("An unexpected problem occurred.", status=status.HTTP_400_BAD_REQUEST)
@@ -150,7 +162,7 @@ class ForgottenPasswordView(rest_views.APIView):
         except ObjectDoesNotExist:
             return Response('This email is not associated to any profile', status=status.HTTP_400_BAD_REQUEST)
 
-        send_confirmation_code_forgotten_password(user)
+        send_confirmation_code_forgotten_password.delay(user.pk)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -160,6 +172,8 @@ class ConfirmVerificationCodeForPasswordReset(rest_views.APIView):
     serializer_class = ConfirmVerificationCodeForPasswordResetSerializer
 
     def post(self, request):
+        print(request.data.get('email'))
+        print(request.data.get('code'))
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -192,7 +206,7 @@ class RessetPasswordView(rest_views.APIView):
 
         try:
             user = UserModel.objects.filter(email=email).get()
-            confirmation = ConfirmationCode.objects.filter(user=user, code=code, type="ForgottenPassword")
+            confirmation = ConfirmationCode.objects.filter(user=user, code=code, type="ForgottenPassword").get()
             user.set_password(password)
             user.save()
 
@@ -232,6 +246,13 @@ class VerifyAuthTokenAndGetUserDataView(rest_views.APIView):
         return Response({
             'user_id': self.request.user.pk,
             'email': self.request.user.email,
+            'username': self.request.user.username,
             'is_verified': self.request.user.is_verified,
-            'token': token.key,
+            'key': token.key,
         }, status=status.HTTP_200_OK)
+
+
+class GoogleLogin(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+    callback_url = "http://127.0.0.1:8000/accounts/google/login/callback/"
+    client_class = OAuth2Client

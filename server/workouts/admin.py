@@ -1,7 +1,12 @@
 from django.contrib import admin
 
-from server.workouts.models import Exercise, WorkoutSession, WorkoutPlan, Set, ExerciseSession, MuscleGroup
+from server.workouts.models import Exercise, WorkoutSession, WorkoutPlan, Set, ExerciseSession, MuscleGroup, \
+    ExerciseSessionItem
 
+
+@admin.register(ExerciseSessionItem)
+class ExerciseSessionItemAdmin(admin.ModelAdmin):
+    pass
 
 @admin.register(Exercise)
 class ExerciseAdmin(admin.ModelAdmin):

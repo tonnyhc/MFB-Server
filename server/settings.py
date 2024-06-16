@@ -35,20 +35,47 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email'
+        ],
+        'APP': {
+            'client_id': config('GOOGLE_CLIENT_ID'),
+            'secret': config('GOOGLE_CLIENT_SECRET'),
+        },
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'FIELDS': ['id', 'email', 'name', 'gender']
+    }
+}
+
+
 
 # Application definition
 
 INSTALLED_APPS = [
     'django.contrib.admin',
-    # 'django.contrib.sites',
+    'django.contrib.sites',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
     # third party apps
+    "sslserver",
     'rest_framework',
     'rest_framework.authtoken',
+    "allauth",
+    "allauth.account",
+    'allauth.socialaccount',
+
+    'allauth.socialaccount.providers.google',
+
+    'dj_rest_auth',
     'corsheaders',
     'simple_history',
     'cloudinary',
@@ -70,12 +97,12 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # "allauth.account.middleware.AccountMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
-# AUTHENTICATION_BACKENDS = [
-#     'allauth.account.auth_backends.AuthenticationBackend',
-#     'django.contrib.auth.backends.ModelBackend',
-# ]
+AUTHENTICATION_BACKENDS = (
+    'allauth.account.auth_backends.AuthenticationBackend',
+    'django.contrib.auth.backends.ModelBackend',
+)
 
 EMAIL_BACKEND = config('EMAIL_BACKEND')
 EMAIL_HOST = config("EMAIL_HOST")
@@ -91,11 +118,12 @@ cloudinary.config(
     api_secret=config("CLOUDINARY_API_SECRET"),
 )
 
-# SITE_ID = 1
-# ACCOUNT_EMAIL_REQUIRED = True
-# ACCOUNT_AUTHENTICATION_METHOD = 'email'
-# ACCOUNT_EMAIL_VERIFICATION = 'optional'
-
+SITE_ID = 2
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+SOCIALACCOUNT_ADAPTER = 'server.authentication.adapter.CustomSocialAccountAdapter'
 
 ROOT_URLCONF = 'server.urls'
 
@@ -131,6 +159,11 @@ DATABASES = {
         "PORT": config("DATABASE_PORT"),
     }
 }
+
+
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -170,9 +203,12 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-AUTH_USER_MODEL = 'authentication.AppUser'
+
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
+AUTH_USER_MODEL = "authentication.AppUser"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+CALLBACK_URL = '/'
+CALLBACK_REDIRECT_URL = '/'

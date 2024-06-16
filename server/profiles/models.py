@@ -27,10 +27,12 @@ class ProfileManager(models.Manager):
 class Profile(models.Model):
     full_name = models.CharField(
         max_length=MAX_LEN_PROFILE_FULL_NAME,
+        blank=True
     )
     gender = models.CharField(
         choices=GenderChoices.choices(),
-        max_length=GenderChoices.max_len()
+        max_length=GenderChoices.max_len(),
+    blank = True
     )
     user = models.OneToOneField(
         UserModel,

@@ -1,3 +1,5 @@
+import time
+
 from django.core.exceptions import ValidationError
 from rest_framework import generics as rest_generic_views, status, views
 from rest_framework.decorators import api_view
@@ -28,17 +30,20 @@ class CreateWorkoutView(rest_generic_views.CreateAPIView):
     def post(self, request, *args, **kwargs):
         workout_name = request.data.get('name')
         exercises = request.data.get('exercises')
-
         if not workout_name:
-            return Response("Please provide a name for your workout!", status=status.HTTP_400_BAD_REQUEST)
+            return Response({'name': "Please provide a name for your workout!"}, status=status.HTTP_400_BAD_REQUEST)
         if not exercises:
-            return Response("The workout must contain exercises!", status=status.HTTP_400_BAD_REQUEST)
+            return Response({"exercises": "The workout must contain exercises!"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             workout = WorkoutSession.create_session(request, workout_name, exercises)
             return Response(self.details_serializer(workout).data, status=status.HTTP_200_OK)
-        except ValidationError:
-            return Response('There was a problem creating the workout', status=status.HTTP_400_BAD_REQUEST)
+        except ValidationError as e:
+            return Response({"generic": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({"generic": 'There was a problem creating the workout: ' + str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
+
 
 
 class WorkoutSessionDetailsView(rest_generic_views.RetrieveAPIView):
@@ -129,7 +134,7 @@ class DeleteWorkoutPlanView(rest_generic_views.DestroyAPIView):
         if request_user_profile == workout_plan.created_by:
             workout_plan.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
-        return Response("You can only delete your own workouts!",status=status.HTTP_401_UNAUTHORIZED)
+        return Response("You can only delete your own workouts!", status=status.HTTP_401_UNAUTHORIZED)
 
 
 # @api_view(["GET"])
@@ -161,27 +166,10 @@ class MuscleGroupsListView(rest_generic_views.ListAPIView):
     serializer_class = BaseMuscleGroupSerializer
 
     def get(self, request, *args, **kwargs):
-        return self.queryset.order_by('name')
-
-
-class ExercisesByMuscleGroup(views.APIView):
-
-    def get(self, request):
-        muscle_groups = MuscleGroup.objects.all()
-        final_list = []
-        for muscle_group in muscle_groups:
-            # TODO: Fix this so it returns only the built ins
-            muscle_group_obj = {
-                "name": muscle_group.name,
-                "exercises": []
-            }
-            for exercise in muscle_group.exercise_set.all():
-                muscle_group_obj['exercises'].append({
-                    'name': exercise.name,
-                    'id': exercise.id
-                })
-            final_list.append(muscle_group_obj)
-        return Response(final_list, status=status.HTTP_200_OK)
+        ordered_muscle_groups = self.queryset.order_by('name')
+        return Response({
+            'muscle_groups': self.serializer_class(ordered_muscle_groups, many=True).data
+        })
 
 
 @api_view(['POST'])

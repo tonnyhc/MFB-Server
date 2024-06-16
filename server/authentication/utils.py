@@ -1,40 +1,18 @@
 import random
 import string
 
-from django.core.mail import send_mail
+from django.contrib.auth import get_user_model
 
-from server import settings
 from server.authentication.models import ConfirmationCode
 
+UserModel = get_user_model()
 
-def send_confirmation_code_for_register(instance):
+def generate_confirmation_code(user_pk):
     code = ''.join(random.choices(string.digits, k=5))
-
+    user = UserModel.objects.get(pk=user_pk)
     try:
-        old_confirmation = ConfirmationCode.objects.get(user=instance, type="AccountVerification")
-        code = old_confirmation.code
+        old_confirmation = ConfirmationCode.objects.filter(user=user, type="AccountVerification").get()
+        return old_confirmation
     except ConfirmationCode.DoesNotExist:
-        ConfirmationCode.objects.create(user=instance, code=code, type="AccountVerification")
-
-    subject = 'Confirm your email address!'
-    message = f"Your confirmation code is: {code}"
-    from_email = settings.EMAIL_HOST_USER
-    recipient_list = [instance.email]
-    send_mail(subject, message, from_email, recipient_list)
-
-
-def send_confirmation_code_forgotten_password(instance):
-    code = ''.join(random.choices(string.digits, k=5))
-
-    try:
-        old_confirmation = ConfirmationCode.objects.get(user=instance, type="ForgottenPassword")
-        code = old_confirmation.code
-    except ConfirmationCode.DoesNotExist:
-        code = ConfirmationCode.objects.create(user=instance, code=code, type="ForgottenPassword"),
-
-    subject = "Reset your password!"
-    message = f"Your verification code is: {code}"
-    from_email = settings.EMAIL_HOST_USER
-    recipient_list = [instance.email]
-    send_mail(subject, message, from_email, recipient_list)
-    return True
+        code = ConfirmationCode.objects.create(user=user, code=code, type="AccountVerification")
+        return code

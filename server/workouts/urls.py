@@ -1,11 +1,11 @@
 from django.urls import path, include
 
 from server.workouts.exercise_views import CreateExerciseView, ExerciseDetailsView, SearchExerciseView, \
-    GetExerciseProgress, EditExerciseSessionView
+    GetExerciseProgress, EditExerciseSessionView, ExercisesByMuscleGroup
 from server.workouts.set_views import AddSetToExerciseSession, RemoveSetFromExerciseSession, EditSet
 from server.workouts.views import CreateWorkoutPlanView, WorkoutsByUserListView, \
     WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, CreateWorkoutView, \
-    ExercisesByMuscleGroup, MuscleGroupsListView, WorkoutSearchView, WorkoutSessionEditView, DeleteWorkoutPlanView
+     MuscleGroupsListView, WorkoutSearchView, WorkoutSessionEditView, DeleteWorkoutPlanView
 
 urlpatterns = [
     path('workout-plan/', include([
@@ -17,7 +17,7 @@ urlpatterns = [
     )),
     path('exercise/', include([
         path('create/', CreateExerciseView.as_view(), name='create exercise view'),
-        path('details/<int:pk>', ExerciseDetailsView.as_view(), name='exercise details view'),
+        path('details/<int:pk>/', ExerciseDetailsView.as_view(), name='exercise details view'),
         path('search/', SearchExerciseView.as_view(), name='search exercise'),
         path('session/', include([
             path('edit/<int:session_id>/', EditExerciseSessionView.as_view(), name='edit exercise session'),

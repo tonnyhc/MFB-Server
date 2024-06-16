@@ -12,17 +12,10 @@ class EditMeasures(rest_generic_views.UpdateAPIView):
     serializer_class = EditMeasuresSerializer
 
     def put(self, request, *args, **kwargs):
-        # serializer = self.serializer_class(data=request.data)
-        # serializer.is_valid(raise_exception=True)
-        # measures = self.get_queryset()
-        # measures.weight = serializer.validated_data['weight']-
-        # measures.height = serializer.validated_data['height']
-        # measures.save()
         dict_for_serializer = {}
         for key, value in request.data.items():
             print(value)
             dict_for_serializer[key] = float(value)
-
 
         serializer = self.serializer_class(instance=self.get_object(), data=dict_for_serializer, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -37,12 +30,12 @@ class EditMeasures(rest_generic_views.UpdateAPIView):
         # return Measures.objects.filter(profile=self.request.user.profile)
 
 
-class EditActivity(rest_generic_views.UpdateAPIView):
+class FitnessActivityLevel(views.APIView):
     def get_queryset(self):
         return self.request.user.profile.fitness
 
     def put(self, request, *args, **kwargs):
-        provided_activity = request.data
+        provided_activity = request.data.get('activity')
         if not provided_activity:
             return Response({'error': 'Activity field is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -57,11 +50,16 @@ class EditActivity(rest_generic_views.UpdateAPIView):
         query.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def get(self, request):
+        activity = self.request.user.profile.fitness.activity
+        return Response({'activity': activity}, status=status.HTTP_200_OK)
 
-class EditGoal(rest_generic_views.UpdateAPIView):
+
+class FitnessGoalView(views.APIView):
 
     def put(self, request, *args, **kwargs):
         provided_goal = request.data
+        print(provided_goal)
         if not provided_goal:
             return Response({'error': 'Fitness goal is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -71,28 +69,34 @@ class EditGoal(rest_generic_views.UpdateAPIView):
             return Response({'error': f'Invalid goal choice: {provided_goal}'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        query = self.get_queryset()
-        query.goal = goal_enum_value
-        query.save()
+        fitness_instance = self.request.user.profile.fitness
+        fitness_instance.goal = goal_enum_value
+        fitness_instance.save()
+        self.request.user.profile.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def get_queryset(self):
-        return self.request.user.profile.fitness
-
-
-class ProfileGoalView(views.APIView):
-    def get(self, request, *args, **kwargs):
-        profile = request.user.profile
-        fitness = profile.fitness
-        goal = fitness.goal
+    def get(self, request):
+        fitness_instance = self.request.user.profile.fitness
+        goal = fitness_instance.goal
         goal_text = goal.split('.')[-1]
+        return Response({
+            'goal': goal_text,
+        }, status=status.HTTP_200_OK)
 
-        return Response(goal_text, status=status.HTTP_200_OK)
+# TODO: For delete
+# class ProfileGoalView(views.APIView):
+#     def get(self, request, *args, **kwargs):
+#         profile = request.user.profile
+#         fitness = profile.fitness
+#         goal = fitness.goal
+#         goal_text = goal.split('.')[-1]
+#
+#         return Response(goal_text, status=status.HTTP_200_OK)
 
 
 class ProfileWeightView(views.APIView):
     def get(self, request):
-        profile = request.user.profile
+        profile = self.request.user.profile
         measures = profile.measures
         weight = measures.weight
         weight_logs = [{'weight': log.weight, 'date': transform_timestamp_without_hour(str(log.history_date))} for log
@@ -126,3 +130,35 @@ class ProfileWeightView(views.APIView):
             'logs': weight_logs
         }
         return Response(return_dict, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        profile = self.request.user.profile
+        new_weight = request.data.get('weight')
+        measures = profile.measures
+        if not new_weight:
+            return Response("Weight is required", status=status.HTTP_400_BAD_REQUEST)
+        measures.weight = float(new_weight)
+        measures.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProfileHeightView(views.APIView):
+    def get(self, request):
+        profile = request.user.profile
+        measures = profile.measures
+        height = measures.height
+
+        return Response({'height': height}, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        profile = request.user.profile
+        new_height = request.data.get('height')
+
+        measures = profile.measures
+        if not new_height:
+            return Response("Height is required", status=status.HTTP_400_BAD_REQUEST)
+        measures.height = int(new_height)
+        measures.save()
+        profile.save()
+        print(measures.height)
+        return Response(status=status.HTTP_204_NO_CONTENT)
