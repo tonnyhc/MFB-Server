@@ -333,6 +333,15 @@ class ExerciseSession(models.Model):
         return interval_instance
 
 
+class SupersetSession(models.Model):
+    exercises = models.ManyToManyField(ExerciseSession)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"Superset Session created by {self.created_by} at {self.created_at}"
+
+
 # added later
 class ExerciseSessionItem(models.Model):
     exercise_session = models.ForeignKey(ExerciseSession, on_delete=models.CASCADE)
@@ -385,21 +394,33 @@ class WorkoutSession(models.Model):
         total_weight_volume = 0
 
         for exercise_data in exercises:
-            exercise = exercise_data['exercise']
-            session_data = exercise_data['session_data']
-            exercise_session = ExerciseSession.create_session(request, exercise['name'], exercise['id'], session_data)
-            workout_session.exercises.add(exercise_session)
+            session_type = exercise_data['session_type']
+            if session_type == 'superset':
+                superset_exercises = exercise_data['exercises_data']
+                superset_session = SupersetSession.objects.create(created_by=request.user.profile)
+                for exercise in superset_exercises:
+                    exercise_session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
+                                                                      exercise['session_data'])
+                    superset_session.exercises.add(exercise_session)
+                workout_session.exercises.add(superset_session)
+
+            elif session_type == 'exercise':
+                exercise = exercise_data['exercise']
+                session_data = exercise_data['session_data']
+                exercise_session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
+                                                                  session_data)
+                workout_session.exercises.add(exercise_session)
 
             # Calculate total sets and total weight volume for the workout session
-            for session_item in session_data:
-                if session_item['type'] == 'set':
-                    total_sets += 1
-                    total_weight_volume += float(session_item['data'].get('weight', 0)) * int(
-                        session_item['data'].get('reps', 0))
+            # for session_item in session_data:
+            #     if session_item['type'] == 'set':
+            #         total_sets += 1
+            #         total_weight_volume += float(session_item['data'].get('weight', 0)) * int(
+            #             session_item['data'].get('reps', 0))
 
-        workout_session.total_sets = total_sets
-        workout_session.total_weight_volume = total_weight_volume
-        workout_session.save()
+        # workout_session.total_sets = total_sets
+        # workout_session.total_weight_volume = total_weight_volume
+        # workout_session.save()
 
         return workout_session
 
@@ -467,11 +488,11 @@ class WorkoutPlan(models.Model):
     )
 
     @staticmethod
-    def create_workout_plan(request, workout_plan_data):
+    def create_routine(request, routine_data):
         try:
             with transaction.atomic():
-                name = workout_plan_data['planName']
-                workouts = workout_plan_data['workouts']
+                name = routine_data['name']
+                workouts = routine_data['workouts']
                 total_workouts = len(workouts)
 
                 # Plan name validation
@@ -484,7 +505,7 @@ class WorkoutPlan(models.Model):
                     created_by=request.user.profile
                 )
 
-                for workout_data in workout_plan_data['workouts']:
+                for workout_data in routine_data['workouts']:
                     workout_name = workout_data['name']
                     exercises_data = workout_data['exercises']
                     # Creating the instance

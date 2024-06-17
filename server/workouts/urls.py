@@ -3,14 +3,14 @@ from django.urls import path, include
 from server.workouts.exercise_views import CreateExerciseView, ExerciseDetailsView, SearchExerciseView, \
     GetExerciseProgress, EditExerciseSessionView, ExercisesByMuscleGroup
 from server.workouts.set_views import AddSetToExerciseSession, RemoveSetFromExerciseSession, EditSet
-from server.workouts.views import CreateWorkoutPlanView, WorkoutsByUserListView, \
+from server.workouts.views import CreateRoutineView, WorkoutsByUserListView, \
     WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, CreateWorkoutView, \
      MuscleGroupsListView, WorkoutSearchView, WorkoutSessionEditView, DeleteWorkoutPlanView
 
 urlpatterns = [
-    path('workout-plan/', include([
+    path('routine/', include([
         path('by-user/', WorkoutsByUserListView.as_view(), name='own workout plans list view'),
-        path('create/', CreateWorkoutPlanView.as_view(), name='create workout plan view'),
+        path('create/', CreateRoutineView.as_view(), name='create workout plan view'),
         path('delete/<int:id>/', DeleteWorkoutPlanView.as_view(), name='delete workout plan view'),
         path('details/<int:id>/', WorkoutPlanDetailsView.as_view(), name='workout plan details'),
     ]

@@ -104,7 +104,7 @@ class WorkoutPlanDetailsView(rest_generic_views.RetrieveAPIView):
         return Response(serialized_query.data, status=status.HTTP_200_OK)
 
 
-class CreateWorkoutPlanView(rest_generic_views.CreateAPIView):
+class CreateRoutineView(rest_generic_views.CreateAPIView):
     queryset = WorkoutPlan
     serializer_class = WorkoutPlanCreationSerializer
 
@@ -114,11 +114,13 @@ class CreateWorkoutPlanView(rest_generic_views.CreateAPIView):
             return Response("Workout plan must have workouts", status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request, *args, **kwargs):
+        print(request.data)
         validation_response = self.validate_workout_plan_data(request.data)
+
         if validation_response:
             return validation_response
         try:
-            WorkoutPlan.create_workout_plan(request=request, workout_plan_data=request.data)
+            WorkoutPlan.create_routine(request=request, routine_data=request.data)
             return Response(status=status.HTTP_204_NO_CONTENT)
         except ValidationError as error:
             return Response(error.message,
