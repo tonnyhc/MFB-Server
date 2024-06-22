@@ -22,7 +22,7 @@ class AddSetToExerciseSession(rest_generic_views.CreateAPIView):
 
 
 class RemoveSetFromExerciseSession(rest_generic_views.DestroyAPIView):
-    def post(self, request, *args, **kwargs):
+    def delete(self, request, *args, **kwargs):
         set_id = kwargs.get('set_id')
         try:
             set_instance = Set.objects.get(id=set_id)

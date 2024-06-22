@@ -362,7 +362,7 @@ class WorkoutSession(models.Model):
     total_exercises = models.IntegerField()
     total_sets = models.IntegerField()
     total_weight_volume = models.IntegerField()
-    exercises = models.ManyToManyField(ExerciseSession)
+    # exercises = models.ManyToManyField(ExerciseSession)
     created_by = models.ForeignKey(
         Profile,
         on_delete=models.CASCADE
@@ -373,6 +373,10 @@ class WorkoutSession(models.Model):
     is_published = models.BooleanField(
         default=False
     )
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True)
+    object_id = models.PositiveIntegerField(null=True)
+    exercises = GenericForeignKey('content_type', 'object_id')
 
     @staticmethod
     def create_session(request, workout_name, exercises):
@@ -396,13 +400,24 @@ class WorkoutSession(models.Model):
         for exercise_data in exercises:
             session_type = exercise_data['session_type']
             if session_type == 'superset':
-                superset_exercises = exercise_data['exercises_data']
+                superset_exercise_sessions = exercise_data['exercises_data']
                 superset_session = SupersetSession.objects.create(created_by=request.user.profile)
-                for exercise in superset_exercises:
+                for session in superset_exercise_sessions:
+                    exercise = session['exercise']
                     exercise_session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
-                                                                      exercise['session_data'])
+                                                                      session['session_data'])
                     superset_session.exercises.add(exercise_session)
-                workout_session.exercises.add(superset_session)
+
+                    superset_session_content_type = ContentType.objects.get_for_model(SupersetSession)
+
+                    # Set the content_type and object_id fields of the workout_session
+                    workout_session.content_type = superset_session_content_type
+                    workout_session.object_id = superset_session.id
+
+                    # Save the workout_session
+                    workout_session.save()
+
+                # workout_session.exercises.add(superset_session)
 
             elif session_type == 'exercise':
                 exercise = exercise_data['exercise']
@@ -513,15 +528,16 @@ class WorkoutPlan(models.Model):
                                                                     exercises=exercises_data)
                     # adding the instance to the workout plan instance
                     workout_plan.workouts.add(workout_session)
-                #     calculating the total_sets
-                workout_plan.total_sets = workout_plan.workouts.aggregate(total_sets=models.Sum('total_sets'))[
-                    'total_sets']
-                # calculating the total weight volume
-                total_weight_volume_aggregate = workout_session.exercises.aggregate(
-                    total_weight_volume=models.Sum(models.F('sets__weight') * models.F('sets__reps'),
-                                                   output_field=models.FloatField())
-                )
-                workout_session.total_weight_volume = total_weight_volume_aggregate['total_weight_volume'] or 0
+
+                # #     calculating the total_sets
+                # workout_plan.total_sets = workout_plan.workouts.aggregate(total_sets=models.Sum('total_sets'))[
+                #     'total_sets']
+                # # calculating the total weight volume
+                # total_weight_volume_aggregate = workout_session.exercises.aggregate(
+                #     total_weight_volume=models.Sum(models.F('sets__weight') * models.F('sets__reps'),
+                #                                    output_field=models.FloatField())
+                # )
+                # workout_session.total_weight_volume = total_weight_volume_aggregate['total_weight_volume'] or 0
                 workout_plan.save()
 
                 return workout_plan
@@ -529,3 +545,21 @@ class WorkoutPlan(models.Model):
         except Exception as e:
             # Handle the exception or log it
             raise e
+
+
+class ActiveRoutine(models.Model):
+    profile = models.ForeignKey(
+        Profile,
+        on_delete=models.CASCADE
+    )
+    workout_plan = models.OneToOneField(
+        WorkoutPlan,
+        primary_key=True,
+        on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+        return f"Active routine for {self.profile} created at {self.created_at}"
