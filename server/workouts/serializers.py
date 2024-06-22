@@ -58,6 +58,18 @@ class BaseWorkoutPlanSerializer(serializers.ModelSerializer):
         return transform_timestamp(str(obj.created_at))
 
 
+class RoutinesListSerializer(BaseWorkoutPlanSerializer):
+    is_active = serializers.SerializerMethodField()
+    class Meta(BaseWorkoutPlanSerializer.Meta):
+        fields = BaseWorkoutPlanSerializer.Meta.fields + ('is_active',)
+
+    def get_is_active(self, obj):
+        request = self.context.get('request')
+        profile = request.user.profile
+        profile_active_routine = profile.activeroutine_set.first()
+        return obj == profile_active_routine
+
+
 class WorkoutPlanCreationSerializer(BaseWorkoutPlanSerializer):
     class Meta(BaseWorkoutPlanSerializer.Meta):
         fields = BaseWorkoutPlanSerializer.Meta.fields

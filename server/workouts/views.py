@@ -9,17 +9,17 @@ from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, Muscle
 from server.workouts.serializers import BaseWorkoutPlanSerializer, \
     WorkoutPlanDetailsSerializer, \
     WorkoutPlanCreationSerializer, WorkoutSessionDetailsSerializer, \
-    BaseMuscleGroupSerializer, BaseWorkoutSerializer, WorkoutSessionEditSerializer
+    BaseMuscleGroupSerializer, BaseWorkoutSerializer, WorkoutSessionEditSerializer, RoutinesListSerializer
 
 
 # Workouts
-class WorkoutsByUserListView(rest_generic_views.ListAPIView):
+class RoutinesListView(rest_generic_views.ListAPIView):
     queryset = WorkoutPlan.objects.all()
-    serializer_class = BaseWorkoutPlanSerializer
+    serializer_class = RoutinesListSerializer
 
     def get(self, request, *args, **kwargs):
         query = self.queryset.filter(created_by_id=request.user.profile.id).order_by('-created_at')
-        serialized_query = self.serializer_class(query, many=True)
+        serialized_query = self.serializer_class(query, many=True, context={'request': request})
         return Response(serialized_query.data, status=status.HTTP_200_OK)
 
 
