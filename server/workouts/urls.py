@@ -9,7 +9,7 @@ from server.workouts.views import CreateRoutineView, WorkoutsByUserListView, \
 
 urlpatterns = [
     path('routine/', include([
-        path('by-user/', WorkoutsByUserListView.as_view(), name='own workout plans list view'),
+        path('list/', WorkoutsByUserListView.as_view(), name='own workout plans list view'),
         path('create/', CreateRoutineView.as_view(), name='create workout plan view'),
         path('delete/<int:id>/', DeleteWorkoutPlanView.as_view(), name='delete workout plan view'),
         path('details/<int:id>/', WorkoutPlanDetailsView.as_view(), name='workout plan details'),
