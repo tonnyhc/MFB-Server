@@ -2,9 +2,9 @@ from rest_framework import serializers
 
 from server.profiles.serializers import BaseProfileSerializer
 from server.utils import transform_timestamp
-from server.workouts.exercise_serializers import ExerciseSessionSerializerNameOnly, ExerciseSessionDetailsSerializer
+from server.workouts.exercise_serializers import ExerciseSessionSerializerNameOnly, ExerciseSessionDetailsSerializer, \
+    BaseSupersetSessionSerializer
 from server.workouts.models import WorkoutPlan, WorkoutSession, MuscleGroup
-
 
 
 class BaseWorkoutSerializer(serializers.ModelSerializer):
@@ -15,7 +15,7 @@ class BaseWorkoutSerializer(serializers.ModelSerializer):
 
 
 class WorkoutDetailsSerializer(BaseWorkoutSerializer):
-    exercises = ExerciseSessionSerializerNameOnly(many=True)
+    # exercises = ExerciseSessionSerializerNameOnly(many=True)
 
     class Meta(BaseWorkoutSerializer.Meta):
         fields = BaseWorkoutSerializer.Meta.fields
@@ -23,15 +23,17 @@ class WorkoutDetailsSerializer(BaseWorkoutSerializer):
 
 class WorkoutSessionEditSerializer(BaseWorkoutSerializer):
     exercises = ExerciseSessionDetailsSerializer(many=True)
+
     class Meta(BaseWorkoutSerializer.Meta):
-        fields = ("name", "exercises", )
+        fields = ("name", "exercises",)
+
 
 class BaseWorkoutSessionSerializer(serializers.ModelSerializer):
     created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = WorkoutSession
-        fields = "__all__"
+        fields = ('name', 'id', 'total_exercises', 'total_sets', 'total_weight_volume', 'is_published', 'created_at',)
 
     @staticmethod
     def get_created_at(obj):
@@ -39,13 +41,27 @@ class BaseWorkoutSessionSerializer(serializers.ModelSerializer):
 
 
 class WorkoutSessionDetailsSerializer(BaseWorkoutSessionSerializer):
-    exercises = ExerciseSessionDetailsSerializer(many=True)
+    exercises = serializers.SerializerMethodField()
+    exercise_serializer = ExerciseSessionDetailsSerializer
+    superset_serializer = BaseSupersetSessionSerializer
 
     class Meta(BaseWorkoutSessionSerializer.Meta):
-        fields = BaseWorkoutSessionSerializer.Meta.fields
+        fields = BaseWorkoutSessionSerializer.Meta.fields + ('exercises',)
+
+    def get_exercises(self, obj):
+        exercises = []
+        for exercise in obj.exercises.all():
+            exercise_instance = exercise.content_object
+            if exercise.content_type.model == "supersetsession":
+                exercises.append(self.superset_serializer(exercise_instance).data)
+            elif exercise.content_type.model == "exercisesession":
+                exercises.append(self.exercise_serializer(exercise_instance).data)
+
+        return exercises
 
 
-class BaseWorkoutPlanSerializer(serializers.ModelSerializer):
+
+class BaseRoutineSerializer(serializers.ModelSerializer):
     created_by = BaseProfileSerializer()
     created_at = serializers.SerializerMethodField()
 
@@ -58,10 +74,29 @@ class BaseWorkoutPlanSerializer(serializers.ModelSerializer):
         return transform_timestamp(str(obj.created_at))
 
 
-class RoutinesListSerializer(BaseWorkoutPlanSerializer):
+class WorkoutPlanCreationSerializer(BaseRoutineSerializer):
+    class Meta(BaseRoutineSerializer.Meta):
+        fields = BaseRoutineSerializer.Meta.fields
+
+
+class RoutineDetailsSerializer(BaseRoutineSerializer):
+    workouts = WorkoutDetailsSerializer(many=True)
+
+    class Meta(BaseRoutineSerializer.Meta):
+        fields = BaseRoutineSerializer.Meta.fields + ('workouts',)
+
+
+# class RoutineDetailsSerializer(serializers.ModelSerializer):
+#     workouts = WorkoutDetailsSerializer(many=True)
+#     class Meta:
+#         model = WorkoutPlan
+#         fields = '__all__'
+
+class RoutinesListSerializer(BaseRoutineSerializer):
     is_active = serializers.SerializerMethodField()
-    class Meta(BaseWorkoutPlanSerializer.Meta):
-        fields = BaseWorkoutPlanSerializer.Meta.fields + ('is_active',)
+
+    class Meta(BaseRoutineSerializer.Meta):
+        fields = BaseRoutineSerializer.Meta.fields + ('is_active',)
 
     def get_is_active(self, obj):
         request = self.context.get('request')
@@ -70,23 +105,15 @@ class RoutinesListSerializer(BaseWorkoutPlanSerializer):
         return obj == profile_active_routine
 
 
-class WorkoutPlanCreationSerializer(BaseWorkoutPlanSerializer):
-    class Meta(BaseWorkoutPlanSerializer.Meta):
-        fields = BaseWorkoutPlanSerializer.Meta.fields
-
-
-class WorkoutPlanDetailsSerializer(BaseWorkoutPlanSerializer):
+class WorkoutPlanDetailsSerializer(BaseRoutineSerializer):
     workouts = WorkoutDetailsSerializer(many=True)
 
-    class Meta(BaseWorkoutPlanSerializer.Meta):
-        fields = (*BaseWorkoutPlanSerializer.Meta.fields, 'workouts')
+    class Meta(BaseRoutineSerializer.Meta):
+        fields = (*BaseRoutineSerializer.Meta.fields, 'workouts')
 
     # def get_workouts(self, obj):
     #     workout_serializer = WorkoutDetailsSerializer(many=True)
     #     return workout_serializer(obj.workouts)
-
-
-
 
 
 class BaseMuscleGroupSerializer(serializers.ModelSerializer):

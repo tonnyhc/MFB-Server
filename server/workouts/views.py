@@ -6,10 +6,10 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, MuscleGroup
-from server.workouts.serializers import BaseWorkoutPlanSerializer, \
-    WorkoutPlanDetailsSerializer, \
+from server.workouts.serializers import \
     WorkoutPlanCreationSerializer, WorkoutSessionDetailsSerializer, \
-    BaseMuscleGroupSerializer, BaseWorkoutSerializer, WorkoutSessionEditSerializer, RoutinesListSerializer
+    BaseMuscleGroupSerializer, BaseWorkoutSerializer, WorkoutSessionEditSerializer, RoutinesListSerializer, \
+    RoutineDetailsSerializer
 
 
 # Workouts
@@ -43,7 +43,6 @@ class CreateWorkoutView(rest_generic_views.CreateAPIView):
         except Exception as e:
             return Response({"generic": 'There was a problem creating the workout: ' + str(e)},
                             status=status.HTTP_400_BAD_REQUEST)
-
 
 
 class WorkoutSessionDetailsView(rest_generic_views.RetrieveAPIView):
@@ -95,7 +94,7 @@ class WorkoutSearchView(rest_generic_views.ListAPIView):
 
 class WorkoutPlanDetailsView(rest_generic_views.RetrieveAPIView):
     queryset = WorkoutPlan.objects.all()
-    serializer_class = WorkoutPlanDetailsSerializer
+    serializer_class = RoutineDetailsSerializer
 
     def get(self, request, *args, **kwargs):
         params_id = kwargs['id']

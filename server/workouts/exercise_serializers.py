@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from server.workouts.models import Exercise, ExerciseSession, Rest, Set, Interval
+from server.workouts.models import Exercise, ExerciseSession, Rest, Set, Interval, SupersetSession
 from server.workouts.set_serializers import SetDetailsSerializer, RestDetailsSerializer, IntervalDetailsSerializer
 
 
@@ -17,6 +17,7 @@ class BaseExerciseSerializer(serializers.ModelSerializer):
         if obj.video_tutorial:
             return obj.video_tutorial.url
         return None
+
 
 
 class ExerciseDetailsSerializer(BaseExerciseSerializer):
@@ -78,3 +79,12 @@ class ExerciseSessionEditSerializer(serializers.Serializer):
 class CreateExerciseSerializer(BaseExerciseSerializer):
     class Meta(BaseExerciseSerializer.Meta):
         fields = BaseExerciseSerializer.Meta.fields
+
+
+
+# superset
+class BaseSupersetSessionSerializer(serializers.ModelSerializer):
+    exercises = ExerciseSessionDetailsSerializer(many=True)
+    class Meta:
+        model = SupersetSession
+        fields =('id', 'created_by', 'created_at', 'exercises')
