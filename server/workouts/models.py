@@ -359,10 +359,10 @@ class WorkoutSession(models.Model):
     name = models.CharField(
         max_length=MAX_LEN_NAME
     )
+    # TODO: On a later basis add a field for total sets per muscle group or something similar
     total_exercises = models.IntegerField()
     total_sets = models.IntegerField()
     total_weight_volume = models.IntegerField()
-    # exercises = models.ManyToManyField(ExerciseSession)
     created_by = models.ForeignKey(
         Profile,
         on_delete=models.CASCADE
@@ -378,13 +378,10 @@ class WorkoutSession(models.Model):
         related_name='workout_sessions'
     )
 
-    #
-    # content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True)
-    # object_id = models.PositiveIntegerField(null=True)
-    # exercises = GenericForeignKey('content_type', 'object_id')
-
     @staticmethod
     def create_session(request, workout_name, exercises):
+        from server.workouts.utils import create_exercise_sessions_for_workout
+
         if not workout_name:
             raise ValidationError("Provide a name for your workout")
         if len(exercises) == 0:
@@ -400,77 +397,9 @@ class WorkoutSession(models.Model):
 
         )
 
-        total_sets = 0
-        total_weight_volume = 0
-
-        for exercise_data in exercises:
-            session_type = exercise_data['session_type']
-            # if session_type == 'superset':
-            #     superset_exercise_sessions = exercise_data['exercises_data']
-            #     superset_session = SupersetSession.objects.create(created_by=request.user.profile)
-            #     for session in superset_exercise_sessions:
-            #         exercise = session['exercise']
-            #         exercise_session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
-            #                                                           session['session_data'])
-            #         superset_session.exercises.add(exercise_session)
-            #
-            #         superset_session_content_type = ContentType.objects.get_for_model(SupersetSession)
-            #
-            #         # Set the content_type and object_id fields of the workout_session
-            #         workout_session.content_type = superset_session_content_type
-            #         workout_session.object_id = superset_session.id
-            #
-            #         # Save the workout_session
-            #         workout_session.save()
-            #
-            #     # workout_session.exercises.add(superset_session)
-            if session_type == 'superset':
-                superset_exercise_sessions = exercise_data['exercises_data']
-                superset_session = SupersetSession.objects.create(created_by=request.user.profile)
-                for session in superset_exercise_sessions:
-                    exercise = session['exercise']
-                    exercise_session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
-                                                                      session['session_data'])
-                    superset_session.exercises.add(exercise_session)
-
-                # Create WorkoutExercise relation for superset
-                superset_content_type = ContentType.objects.get_for_model(SupersetSession)
-                WorkoutExerciseSession.objects.create(
-                    content_type=superset_content_type,
-                    object_id=superset_session.id,
-                    workout_session=workout_session
-                )
-            elif session_type == 'exercise':
-                exercise = exercise_data['exercise']
-                session_data = exercise_data['session_data']
-                exercise_session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
-                                                                  session_data)
-                # Create WorkoutExercise relation for exercise
-                exercise_content_type = ContentType.objects.get_for_model(ExerciseSession)
-                WorkoutExerciseSession.objects.create(
-                    content_type=exercise_content_type,
-                    object_id=exercise_session.id,
-                    workout_session=workout_session
-                )
-            # elif session_type == 'exercise':
-            #     exercise = exercise_data['exercise']
-            #     session_data = exercise_data['session_data']
-            #     exercise_session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
-            #                                                       session_data)
-            #     print(workout_session.exercises)
-            #     workout_session.exercises.add(exercise_session)
-
-            # Calculate total sets and total weight volume for the workout session
-            # for session_item in session_data:
-            #     if session_item['type'] == 'set':
-            #         total_sets += 1
-            #         total_weight_volume += float(session_item['data'].get('weight', 0)) * int(
-            #             session_item['data'].get('reps', 0))
-
-        # workout_session.total_sets = total_sets
-        # workout_session.total_weight_volume = total_weight_volume
-        # workout_session.save()
-
+        exercise_sessions = create_exercise_sessions_for_workout(request, workout_session, exercises)
+        workout_session.exercises.add(*exercise_sessions)
+        workout_session.save()
         return workout_session
 
     @staticmethod

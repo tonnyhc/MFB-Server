@@ -19,7 +19,6 @@ class BaseExerciseSerializer(serializers.ModelSerializer):
         return None
 
 
-
 class ExerciseDetailsSerializer(BaseExerciseSerializer):
     class Meta(BaseExerciseSerializer.Meta):
         fields = BaseExerciseSerializer.Meta.fields
@@ -39,6 +38,11 @@ class BaseExerciseSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExerciseSession
         fields = "__all__"
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['session_type'] = 'exercise'
+        return representation
 
 
 class ExerciseSessionDetailsSerializer(BaseExerciseSessionSerializer):
@@ -64,12 +68,18 @@ class ExerciseSessionDetailsSerializer(BaseExerciseSessionSerializer):
 
 class ExerciseSessionSerializerNameOnly(BaseExerciseSessionSerializer):
     name = serializers.SerializerMethodField()
-
+    sets_count = serializers.SerializerMethodField()
     class Meta(BaseExerciseSessionSerializer.Meta):
-        fields = ('name',)
+        fields = ('name', 'id', 'sets_count')
+
+
+    def get_sets_count(self, obj):
+        sets = obj.exercisesessionitem_set.all()
+        return sets.count()
 
     def get_name(self, obj):
         return obj.exercise.name
+
 
 class ExerciseSessionEditSerializer(serializers.Serializer):
     class Meta(BaseExerciseSessionSerializer.Meta):
@@ -81,10 +91,22 @@ class CreateExerciseSerializer(BaseExerciseSerializer):
         fields = BaseExerciseSerializer.Meta.fields
 
 
-
 # superset
 class BaseSupersetSessionSerializer(serializers.ModelSerializer):
     exercises = ExerciseSessionDetailsSerializer(many=True)
+
     class Meta:
         model = SupersetSession
-        fields =('id', 'created_by', 'created_at', 'exercises')
+        fields = ('id', 'created_by', 'created_at', 'exercises')
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['session_type'] = 'superset'
+        return representation
+
+class SupersetSessionSerializerNameOnly(BaseSupersetSessionSerializer):
+    exercises = ExerciseSessionSerializerNameOnly(many=True)
+
+    class Meta:
+        model = SupersetSession
+        fields = ('id', 'exercises')
