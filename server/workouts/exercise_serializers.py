@@ -39,6 +39,7 @@ class BaseExerciseSessionSerializer(serializers.ModelSerializer):
         model = ExerciseSession
         fields = "__all__"
 
+
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['session_type'] = 'exercise'
@@ -57,11 +58,14 @@ class ExerciseSessionDetailsSerializer(BaseExerciseSessionSerializer):
         for instance in exercise_session_items:
             model_class = instance.content_type.model_class()
             if model_class == Rest:
-                final_list.append(RestDetailsSerializer(instance.item).data)
+                final_list.append(
+                    {"id": instance.item.pk, "type": "rest", "data": RestDetailsSerializer(instance.item).data})
             elif model_class == Set:
-                final_list.append(SetDetailsSerializer(instance.item).data)
+                final_list.append(
+                    {"id": instance.item.pk, "type": "set", "data": SetDetailsSerializer(instance.item).data})
             elif model_class == Interval:
-                final_list.append(IntervalDetailsSerializer(instance.item).data)
+                final_list.append(
+                    {"id": instance.item.pk, "type": "interval", "data": IntervalDetailsSerializer(instance.item).data})
 
         return final_list
 
@@ -69,9 +73,9 @@ class ExerciseSessionDetailsSerializer(BaseExerciseSessionSerializer):
 class ExerciseSessionSerializerNameOnly(BaseExerciseSessionSerializer):
     name = serializers.SerializerMethodField()
     sets_count = serializers.SerializerMethodField()
+
     class Meta(BaseExerciseSessionSerializer.Meta):
         fields = ('name', 'id', 'sets_count')
-
 
     def get_sets_count(self, obj):
         sets = obj.exercisesessionitem_set.all()
@@ -103,6 +107,7 @@ class BaseSupersetSessionSerializer(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         representation['session_type'] = 'superset'
         return representation
+
 
 class SupersetSessionSerializerNameOnly(BaseSupersetSessionSerializer):
     exercises = ExerciseSessionSerializerNameOnly(many=True)

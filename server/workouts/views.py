@@ -8,8 +8,8 @@ from rest_framework.response import Response
 from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, MuscleGroup
 from server.workouts.serializers import \
     WorkoutPlanCreationSerializer, WorkoutSessionDetailsSerializer, \
-    BaseMuscleGroupSerializer, BaseWorkoutSerializer, WorkoutSessionEditSerializer, RoutinesListSerializer, \
-    RoutineDetailsSerializer
+    BaseMuscleGroupSerializer, RoutinesListSerializer, \
+    RoutineDetailsSerializer, BaseWorkoutSessionSerializer
 
 
 # Workouts
@@ -24,12 +24,13 @@ class RoutinesListView(rest_generic_views.ListAPIView):
 
 
 class CreateWorkoutView(rest_generic_views.CreateAPIView):
-    serializer_class = BaseWorkoutSerializer
+    serializer_class = BaseWorkoutSessionSerializer
     details_serializer = WorkoutSessionDetailsSerializer
 
     def post(self, request, *args, **kwargs):
         workout_name = request.data.get('name')
         exercises = request.data.get('exercises')
+        print(request.data)
         if not workout_name:
             return Response({'name': "Please provide a name for your workout!"}, status=status.HTTP_400_BAD_REQUEST)
         if not exercises:
@@ -59,7 +60,7 @@ class WorkoutSessionDetailsView(rest_generic_views.RetrieveAPIView):
 
 class WorkoutSessionEditView(rest_generic_views.UpdateAPIView):
     queryset = WorkoutSession.objects.all()
-    serializer_class = WorkoutSessionEditSerializer
+    serializer_class = WorkoutSessionDetailsSerializer
 
     def put(self, request, *args, **kwargs):
         workout_id = kwargs.get('pk')
@@ -68,9 +69,21 @@ class WorkoutSessionEditView(rest_generic_views.UpdateAPIView):
         except WorkoutSession.DoesNotExist:
 
             return Response("Workout session does not exist.", status=status.HTTP_400_BAD_REQUEST)
-
         edited_session = WorkoutSession.edit_session(request, workout, request.data)
+
         return Response(self.serializer_class(edited_session).data, status=status.HTTP_200_OK)
+
+class WorkoutSessionDeleteView(rest_generic_views.DestroyAPIView):
+    def delete(self, request, *args, **kwargs):
+        workout_id = kwargs.get('pk')
+        try:
+            workout = WorkoutSession.objects.get(pk=workout_id)
+        except WorkoutSession.DoesNotExist:
+            return Response("Workout session does not exist.", status=status.HTTP_400_BAD_REQUEST)
+        if request.user.profile != workout.created_by:
+            return Response("You can only delete your own workouts!", status=status.HTTP_401_UNAUTHORIZED)
+        workout.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class WorkoutSearchView(rest_generic_views.ListAPIView):

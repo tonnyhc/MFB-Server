@@ -1,4 +1,3 @@
-import cloudinary
 from cloudinary.models import CloudinaryField
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -32,6 +31,15 @@ class Rest(models.Model):
 
     def __str__(self):
         return f"{self.minutes}m {self.seconds}s"
+
+    def edit_session(self, minutes, seconds):
+        # checking if the fields are the same to not make the edit to the db
+        if self.minutes == minutes and self.seconds == seconds:
+            return self
+        self.minutes = minutes
+        self.seconds = seconds
+        self.save()
+        return self
 
 
 class Set(models.Model):
@@ -77,6 +85,7 @@ class Set(models.Model):
 
     @staticmethod
     def edit_data(set_instance, set_data):
+        # TODO: Check if all the fields are the same, to not make the edits
         set_instance.reps = set_data['reps']
         set_instance.weight = set_data['weight']
         set_instance.min_reps = set_data['min_reps']
@@ -226,13 +235,14 @@ class ExerciseSession(models.Model):
                 profile=request.user.profile,
                 exercise=exercise,
             )
-
+            if not session_data or len(session_data) <= 0:  # if there is no data for the session
+                raise ValidationError("Cant create empty exercise session")
             for item in session_data:
                 if item['type'] == 'set':
                     ExerciseSession.add_set(request, exercise_session, item['data'])
                 elif item['type'] == 'rest':
                     ExerciseSession.add_rest(request, exercise_session, item['data'])
-                elif item['type'] == 'intervaL':
+                elif item['type'] == 'interval':
                     ExerciseSession.add_interval(request, exercise_session, item['data'])
 
         return exercise_session
@@ -262,23 +272,30 @@ class ExerciseSession(models.Model):
 
     @staticmethod
     def edit_session(request, exercise_session, data):
-        sets = data['sets']
+        sets = data['session_data']
         notes = data['notes']
         for exercise_set in sets:
             if not 'id' in exercise_set:
                 ExerciseSession.add_single_set_instance(request, exercise_session, exercise_set)
-            else:
-                try:
-                    set_instance = Set.objects.get(pk=exercise_set['id'])
-                    Set.edit_data(set_instance, exercise_set)
-                except Set.DoesNotExist:
-                    return models.ObjectDoesNotExist
+                continue
+            if exercise_set['type'] == 'rest':
+                rest = Rest.objects.get(pk=exercise_set['id'])
+                rest.edit_session(exercise_set['data']['minutes'], exercise_set['data']['seconds'])
+                continue
+            # TODO: Check if the item is rest or interval
+            try:
+                set_instance = Set.objects.get(pk=exercise_set['id'])
+                Set.edit_data(set_instance, exercise_set.get('data', {}))
+            except Set.DoesNotExist:
+                return models.ObjectDoesNotExist
         exercise_session.notes = notes
         return exercise_session.save()
 
     # added later
     @staticmethod
     def add_set(request, exercise_session, set_data):
+        # TODO: Check the items fields and if there are empty dont create the instance
+
         set_instance = Set.objects.create(
             weight=float(set_data.get('weight', 0)),
             reps=int(set_data.get('reps', 0)),
@@ -341,6 +358,34 @@ class SupersetSession(models.Model):
     def __str__(self):
         return f"Superset Session created by {self.created_by} at {self.created_at}"
 
+    def add_exercise_sessions(self, exercise_sessions):
+        exercises = self.exercises.all()
+        exercises_to_add = []
+        for exercise_session in exercise_sessions:
+            if exercise_session not in exercises:
+                exercises_to_add.append(exercise_session)
+        if len(exercises_to_add) == 0:
+            return self
+        self.exercises.add(*exercises_to_add)
+        self.save()
+        return self
+
+    @staticmethod
+    def edit_session(request, superset_session, data):
+        from server.workouts.utils import remove_exercises_not_in_list
+        exercises_in_superset_instance = superset_session.exercises.all()
+        #            remove exercises from the superset
+        exercises_after_deletion = remove_exercises_not_in_list(exercises_in_superset_instance,
+                                                                data.get('exercises', {}))
+        #             add new exercises to the superset
+        session_after_exercise_add = superset_session.add_exercise_sessions(exercises_after_deletion)
+        for exercise_session in session_after_exercise_add.exercises.all():
+            exercise_data = next(
+                (exercise for exercise in data.get('exercises') if exercise['id'] == exercise_session.pk),
+                None)
+            #               edit exercises from the superset
+            ExerciseSession.edit_session(request, exercise_session, exercise_data)
+
 
 # added later
 class ExerciseSessionItem(models.Model):
@@ -377,6 +422,11 @@ class WorkoutSession(models.Model):
         'WorkoutExerciseSession',
         related_name='workout_sessions'
     )
+
+    def add_exercise_sessions(self, exercise_sessions):
+        self.exercises.add(*exercise_sessions)
+        self.save()
+        return self
 
     @staticmethod
     def create_session(request, workout_name, exercises):
@@ -417,35 +467,15 @@ class WorkoutSession(models.Model):
 
     @staticmethod
     def edit_session(request, workout_session, new_data):
+        from server.workouts.utils import update_workout_session_exercises
+
         workout_name = new_data.get('name')
         exercises = new_data.get('exercises')
-        workout_session_exercises_instances = workout_session.exercises.all()
 
-        # Getting all the ids for the exercises send by the request
-        new_exercise_ids = [exercise_session.get('id') for exercise_session in exercises]
-
-        for existing_exercise in workout_session_exercises_instances:
-            # checking if the exercise is in the session if not deleting!
-            if existing_exercise.pk not in new_exercise_ids:
-                workout_session.exercises.remove(existing_exercise)
-                existing_exercise.delete()
-
-        # looping the exercises
-        for exercise_session in exercises:
-            # try, catch to get the exercise_instance
-            try:
-                exercise_instance = ExerciseSession.objects.get(pk=exercise_session.get('id'))
-                # if instance, sending it to the model's method to edit it
-                ExerciseSession.edit_session(request, exercise_instance, exercise_session)
-            except ExerciseSession.DoesNotExist:
-                # if not instance that means the exercise is added to the workout now!
-                exercise = exercise_session['exercise']
-                sets = exercise_session['sets']
-                exercise_instance = ExerciseSession.create_session(request, exercise['name'], sets)
-                exercise_instance.save()
-                workout_session.exercises.add(exercise_instance)
+        updated_exercises = update_workout_session_exercises(request, workout_session, exercises)
 
         workout_session.name = workout_name
+        workout_session.exercises.set(updated_exercises)
         workout_session.save()
         return workout_session
 
@@ -499,15 +529,6 @@ class WorkoutPlan(models.Model):
                     # adding the instance to the workout plan instance
                     workout_plan.workouts.add(workout_session)
 
-                # #     calculating the total_sets
-                # workout_plan.total_sets = workout_plan.workouts.aggregate(total_sets=models.Sum('total_sets'))[
-                #     'total_sets']
-                # # calculating the total weight volume
-                # total_weight_volume_aggregate = workout_session.exercises.aggregate(
-                #     total_weight_volume=models.Sum(models.F('sets__weight') * models.F('sets__reps'),
-                #                                    output_field=models.FloatField())
-                # )
-                # workout_session.total_weight_volume = total_weight_volume_aggregate['total_weight_volume'] or 0
                 workout_plan.save()
 
                 return workout_plan
