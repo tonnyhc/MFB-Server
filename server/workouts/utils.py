@@ -1,5 +1,4 @@
-from server.workouts.models import ExerciseSession, WorkoutExerciseSession, SupersetSession
-from django.contrib.contenttypes.models import ContentType
+from server.workouts.models import ExerciseSession, SupersetSession
 
 
 def get_serialized_exercises(obj):
@@ -27,46 +26,69 @@ def get_serialized_exercises(obj):
 
 
 def create_exercise_sessions_for_workout(request, workout_session, exercise_sessions):
-    from server.workouts.models import SupersetSession
-    # TODO: Refactor this function to be more readable
     # TODO: do not allow creation of empty sets
     sessions = []
+
     for exercise_session in exercise_sessions:
         session_type = exercise_session['session_type']
-        if session_type == 'superset':
-            superset_exercise_sessions = exercise_session['exercises_data']
-            superset_session = SupersetSession.objects.create(created_by=request.user.profile)
-            for session in superset_exercise_sessions:
-                exercise = session['exercise']
-                exercise_session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
-                                                                  session['session_data'])
-                superset_session.exercises.add(exercise_session)
 
-            # Create WorkoutExercise relation for superset
-            superset_content_type = ContentType.objects.get_for_model(SupersetSession)
-            superset_workout_session = WorkoutExerciseSession.objects.create(
-                content_type=superset_content_type,
-                object_id=superset_session.id,
-                workout_session=workout_session
-            )
-            superset_workout_session.save()
+        if session_type == 'superset':
+            superset_workout_session = create_superset_session(request, workout_session, exercise_session)
             sessions.append(superset_workout_session)
         elif session_type == 'exercise':
-            exercise = exercise_session['exercise']
-            session_data = exercise_session['session_data']
-            exercise_session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
-                                                              session_data)
-            # Create WorkoutExercise relation for exercise
-            exercise_content_type = ContentType.objects.get_for_model(ExerciseSession)
-            exercise_workout_session = WorkoutExerciseSession.objects.create(
-                content_type=exercise_content_type,
-                object_id=exercise_session.id,
-                workout_session=workout_session
-            )
-
-            exercise_workout_session.save()
+            exercise_workout_session = create_exercise_workout_session(request, workout_session, exercise_session)
             sessions.append(exercise_workout_session)
+
     return sessions
+
+
+def create_exercise_workout_session(request, workout_session, exercise_session):
+    from server.workouts.models import ExerciseSession, WorkoutExerciseSession
+    from django.contrib.contenttypes.models import ContentType
+
+    session_order = exercise_session.get('order',0 )
+    exercise = exercise_session['exercise']
+    session_data = exercise_session['session_data']
+    exercise_session = ExerciseSession.create_session(
+        request, exercise['name'], exercise['id'], session_data
+    )
+
+    exercise_content_type = ContentType.objects.get_for_model(ExerciseSession)
+    exercise_workout_session = WorkoutExerciseSession.objects.create(
+        content_type=exercise_content_type,
+        object_id=exercise_session.id,
+        workout_session=workout_session,
+        order=session_order
+    )
+
+    exercise_workout_session.save()
+    return exercise_workout_session
+
+
+def create_superset_session(request, workout_session, exercise_session):
+    from server.workouts.models import SupersetSession, ExerciseSession, WorkoutExerciseSession
+    from django.contrib.contenttypes.models import ContentType
+
+    superset_exercise_sessions = exercise_session['exercises_data']
+    superset_session = SupersetSession.objects.create(created_by=request.user.profile)
+
+    for session in superset_exercise_sessions:
+        exercise = session['exercise']
+        exercise_session = ExerciseSession.create_session(
+            request, exercise['name'], exercise['id'], session['session_data']
+        )
+        superset_session.exercises.add(exercise_session)
+
+    superset_content_type = ContentType.objects.get_for_model(SupersetSession)
+    superset_workout_session = WorkoutExerciseSession.objects.create(
+        content_type=superset_content_type,
+        object_id=superset_session.id,
+        workout_session=workout_session,
+        order=exercise_session.get('order', 0),
+    )
+
+    superset_workout_session.save()
+    return superset_workout_session
 
 
 def calculate_exercise_set_total_volume(set_session):
@@ -136,7 +158,6 @@ def add_new_exercise_sessions_to_workout_session(request, workout_session, exerc
             session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
                                                      exercise['session_data'])
             workout_session.add_exercise([session])
-
 
 
 def remove_exercises_not_in_list(session_exercises: object, list_exercises: object) -> object:

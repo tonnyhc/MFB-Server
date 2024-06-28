@@ -352,6 +352,7 @@ class ExerciseSession(models.Model):
 
 class SupersetSession(models.Model):
     exercises = models.ManyToManyField(ExerciseSession)
+    notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
 
@@ -359,8 +360,11 @@ class SupersetSession(models.Model):
         return f"Superset Session created by {self.created_by} at {self.created_at}"
 
     def add_exercise_sessions(self, exercise_sessions):
+        """Iterating over the exercises and checking if the exercise session
+        is not in the superset and if it is not adding it to the list of exercises to add"""
         exercises = self.exercises.all()
         exercises_to_add = []
+
         for exercise_session in exercise_sessions:
             if exercise_session not in exercises:
                 exercises_to_add.append(exercise_session)
@@ -374,17 +378,19 @@ class SupersetSession(models.Model):
     def edit_session(request, superset_session, data):
         from server.workouts.utils import remove_exercises_not_in_list
         exercises_in_superset_instance = superset_session.exercises.all()
-        #            remove exercises from the superset
+        """This function is removing the exercises that are not in the list of exercises but are in the superset"""
         exercises_after_deletion = remove_exercises_not_in_list(exercises_in_superset_instance,
                                                                 data.get('exercises', {}))
-        #             add new exercises to the superset
+        """This function is adding the new exercises to the superset"""
         session_after_exercise_add = superset_session.add_exercise_sessions(exercises_after_deletion)
         for exercise_session in session_after_exercise_add.exercises.all():
             exercise_data = next(
                 (exercise for exercise in data.get('exercises') if exercise['id'] == exercise_session.pk),
                 None)
-            #               edit exercises from the superset
+            """And this is editing the exercise"""
             ExerciseSession.edit_session(request, exercise_session, exercise_data)
+        superset_session.notes = data.get('notes')
+        return superset_session.save()
 
 
 # added later
@@ -393,7 +399,7 @@ class ExerciseSessionItem(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     item = GenericForeignKey('content_type', 'object_id')
-    order = models.PositiveIntegerField()
+    order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['order']
@@ -485,6 +491,21 @@ class WorkoutExerciseSession(models.Model):
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
     workout_session = models.ForeignKey(WorkoutSession, related_name='workout_exercises', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    edited_at = models.DateTimeField(auto_now=True)
+    # created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        # exercise_name = ''
+        if self.content_type.model == 'supersetsession':
+            exercise_name = 'Superset'
+        else:
+            exercise_name = self.content_object.exercise.name
+        return f"Workout Exercise Session {self.id} ---- {exercise_name}"
 
 
 class WorkoutPlan(models.Model):

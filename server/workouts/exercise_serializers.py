@@ -101,7 +101,7 @@ class BaseSupersetSessionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = SupersetSession
-        fields = ('id', 'created_by', 'created_at', 'exercises')
+        fields = ('id', 'created_by', 'created_at', 'exercises', 'notes')
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

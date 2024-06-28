@@ -3,7 +3,7 @@ from rest_framework import serializers
 from server.profiles.serializers import BaseProfileSerializer
 from server.utils import transform_timestamp
 from server.workouts.exercise_serializers import ExerciseSessionSerializerNameOnly, ExerciseSessionDetailsSerializer, \
-    BaseSupersetSessionSerializer, SupersetSessionSerializerNameOnly
+    BaseSupersetSessionSerializer
 from server.workouts.models import WorkoutPlan, WorkoutSession, MuscleGroup
 from server.workouts.utils import get_serialized_exercises
 
