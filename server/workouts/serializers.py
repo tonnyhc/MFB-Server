@@ -8,11 +8,6 @@ from server.workouts.models import WorkoutPlan, WorkoutSession, MuscleGroup
 from server.workouts.utils import get_serialized_exercises
 
 
-# class BaseWorkoutSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = WorkoutSession
-#         fields = ('id', 'created_at', "name", 'total_exercises', "total_sets", "total_weight_volume", "is_published",
-#                   'created_by', 'exercises')
 class BaseWorkoutSessionSerializer(serializers.ModelSerializer):
     created_at = serializers.SerializerMethodField()
 

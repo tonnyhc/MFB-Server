@@ -126,6 +126,7 @@ class CreateRoutineView(rest_generic_views.CreateAPIView):
             return Response("Workout plan must have workouts", status=status.HTTP_400_BAD_REQUEST)
 
     def post(self, request, *args, **kwargs):
+        print(request.data)
         validation_response = self.validate_workout_plan_data(request.data)
 
         if validation_response:

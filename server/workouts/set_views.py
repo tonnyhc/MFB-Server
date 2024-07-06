@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from server.map_data import empty_set
 from server.workouts.models import ExerciseSession, Set
 from server.workouts.set_serializers import SetDetailsSerializer, EditSetSerializer
+from server.workouts.utils import convert_str_to_float
 
 
 # Sets
@@ -40,26 +41,23 @@ class EditSet(views.APIView):
     queryset = Set.objects.all()
     serializer_class = EditSetSerializer
 
-    def post(self, request, *args, **kwargs):
+    def put(self, request, *args, **kwargs):
         set_id = kwargs.get('set_id')
         try:
             set_instance = self.queryset.get(id=set_id)
             data = request.data
+            set_data = data.get('data')
 
-            def convert_str_to_float(value):
-                if ',' in value:
-                    value = value.replace(",", ".")
-                return float(value)
 
-            weight = data.get('weight')
+            weight = set_data.get('weight')
             converted_weight = convert_str_to_float(weight)
             set_obj = {
-                'reps': str(data.get('reps')),
+                'reps': str(set_data.get('reps')),
                 "weight": converted_weight,
-                "max_reps": str(data.get('maxReps')),
-                "min_reps": str(data.get('minReps')),
-                "to_failure": data.get('failure'),
-                "bodyweight": data.get('bodyweight'),
+                "max_reps": str(set_data.get('max_reps', set_instance.max_reps)),
+                "min_reps": str(set_data.get('min_reps', set_instance.min_reps)),
+                "to_failure": set_data.get('to_failure', set_instance.to_failure),
+                "bodyweight": set_data.get('bodyweight', set_instance.bodyweight),
                 'created_by': set_instance.created_by.pk
             }
             serializer = self.serializer_class(data=set_obj)

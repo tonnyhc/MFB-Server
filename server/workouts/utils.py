@@ -1,6 +1,3 @@
-from server.workouts.models import ExerciseSession, SupersetSession
-
-
 def get_serialized_exercises(obj):
     from server.workouts.exercise_serializers import SupersetSessionSerializerNameOnly, \
         ExerciseSessionSerializerNameOnly
@@ -46,7 +43,7 @@ def create_exercise_workout_session(request, workout_session, exercise_session):
     from server.workouts.models import ExerciseSession, WorkoutExerciseSession
     from django.contrib.contenttypes.models import ContentType
 
-    session_order = exercise_session.get('order',0 )
+    session_order = exercise_session.get('order', 0)
     exercise = exercise_session['exercise']
     session_data = exercise_session['session_data']
     exercise_session = ExerciseSession.create_session(
@@ -69,22 +66,21 @@ def create_superset_session(request, workout_session, exercise_session):
     from server.workouts.models import SupersetSession, ExerciseSession, WorkoutExerciseSession
     from django.contrib.contenttypes.models import ContentType
 
-    superset_exercise_sessions = exercise_session['exercises_data']
+    superset_exercise_sessions = exercise_session['exercises']
     superset_session = SupersetSession.objects.create(created_by=request.user.profile)
-
+    superset_order_index = exercise_session.get('order')
     for session in superset_exercise_sessions:
         exercise = session['exercise']
         exercise_session = ExerciseSession.create_session(
             request, exercise['name'], exercise['id'], session['session_data']
         )
         superset_session.exercises.add(exercise_session)
-
     superset_content_type = ContentType.objects.get_for_model(SupersetSession)
     superset_workout_session = WorkoutExerciseSession.objects.create(
         content_type=superset_content_type,
         object_id=superset_session.id,
         workout_session=workout_session,
-        order=exercise_session.get('order', 0),
+        order=superset_order_index
     )
 
     superset_workout_session.save()
@@ -129,6 +125,7 @@ def calculate_superset_total_sets(superset_session):
 
 
 def update_workout_session_exercises(request, workout_session, exercises):
+    from server.workouts.models import ExerciseSession, SupersetSession
     session_instance_exercises = workout_session.exercises.all()
     final_exercises = remove_exercises_not_in_list(session_instance_exercises, exercises)
     add_new_exercise_sessions_to_workout_session(request, workout_session, exercises)
@@ -146,6 +143,7 @@ def update_workout_session_exercises(request, workout_session, exercises):
 
 
 def add_new_exercise_sessions_to_workout_session(request, workout_session, exercises):
+    from server.workouts.models import ExerciseSession
     for session in exercises:
         session_type = session.get('session_type')
         # TODO: Handle the superset logic
@@ -191,3 +189,32 @@ def remove_exercises_not_in_list(session_exercises: object, list_exercises: obje
         session_exercises.filter(id__in=ids_to_remove).delete()
 
     return session_exercises
+
+
+def convert_str_to_float(value):
+    if ',' in str(value):
+        value = value.replace(",", ".")
+    return float(value)
+
+
+def convert_str_time_to_interval_time(time: str) -> dict:
+    try:
+        # Split the time string into components
+        time_parts = time.split(':')
+        hours, minutes, seconds = (time_parts + ['0', '0', '0'])[:3]
+
+        # Convert each component to an integer, defaulting to 0 if empty or null
+        hours = int(hours) if hours else 0
+        minutes = int(minutes) if minutes else 0
+        seconds = int(seconds) if seconds else 0
+
+        # Return the components in a dictionary
+        return {'hours': hours, 'minutes': minutes, 'seconds': seconds}
+    except Exception as e:
+        print(f"Error in converting time: {e}")
+        return {'hours': 0, 'minutes': 0, 'seconds': 0}
+
+
+def get_value_or_default(data: dict, key: str, default=0):
+    value = data.get(key, default)
+    return value if value != '' else default

@@ -1,3 +1,5 @@
+import datetime
+
 from cloudinary.models import CloudinaryField
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -9,6 +11,7 @@ from server.profiles.models import Profile
 from django.db.models import Max
 
 from server.utils import string_to_bool
+from server.workouts.utils import get_value_or_default
 
 
 class MuscleGroup(models.Model):
@@ -84,8 +87,31 @@ class Set(models.Model):
     history = HistoricalRecords()
 
     @staticmethod
-    def edit_data(set_instance, set_data):
+    def edit_data(request, set_instance, set_data):
         # TODO: Check if all the fields are the same, to not make the edits
+        if request.user.profile != set_instance.created_by:
+            return PermissionDenied("You can only edit your own sets")
+        set_intance_fields = {
+            'weight': set_instance.weight,
+            'reps': set_instance.reps,
+            'min_reps': set_instance.min_reps,
+            'max_reps': set_instance.max_reps,
+            'to_failure': set_instance.to_failure,
+            'bodyweight': set_instance.bodyweight
+
+        }
+        set_data_fields = {
+            'weight': float(set_data.get('weight')),
+            'reps': int(set_data.get('reps')),
+            'min_reps': int(set_data.get('min_reps')),
+            'max_reps': int(set_data.get('max_reps')),
+            'to_failure': bool(set_data.get('to_failure')),
+            'bodyweight': bool(set_data.get('bodyweight'))
+        }
+
+        if set_data_fields == set_intance_fields:
+            return set_instance
+
         set_instance.reps = set_data['reps']
         set_instance.weight = set_data['weight']
         set_instance.min_reps = set_data['min_reps']
@@ -106,7 +132,7 @@ class Set(models.Model):
 
 
 class Interval(models.Model):
-    time = models.PositiveIntegerField()
+    time = models.TimeField()
     distance = models.PositiveIntegerField()
     level = models.PositiveIntegerField()
     pace = models.PositiveIntegerField()
@@ -333,11 +359,16 @@ class ExerciseSession(models.Model):
 
     @staticmethod
     def add_interval(request, exercise_session, interval_data):
+        from server.workouts.utils import convert_str_time_to_interval_time
+
+        # {'distance': '3000', 'level': '', 'pace': '5', 'time': '0:2:0'}
+        transformed_time = convert_str_time_to_interval_time(interval_data.get('time', '0:0:0'))
+
         interval_instance = Interval.objects.create(
-            time=interval_data.get('time', 0),
-            distance=interval_data.get('distance', 0),
-            level=interval_data.get('level', 0),
-            pace=interval_data.get('pace', 0),
+            time=datetime.time(transformed_time['hours'], transformed_time['minutes'], transformed_time['seconds']),
+            distance=get_value_or_default(interval_data, 'distance'),
+            level=get_value_or_default(interval_data, 'level'),
+            pace=get_value_or_default(interval_data, 'pace'),
             created_by=request.user.profile
         )
         content_type = ContentType.objects.get_for_model(interval_instance)
