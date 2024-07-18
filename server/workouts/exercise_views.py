@@ -100,6 +100,8 @@ class GetExerciseProgress(views.APIView):
         return Response(return_array, status=status.HTTP_200_OK)
 
 
+
+# TODO: Fix this view
 class EditExerciseSessionView(rest_generic_views.UpdateAPIView):
     serializer_class = ExerciseSessionEditSerializer
 
@@ -116,10 +118,11 @@ class EditExerciseSessionView(rest_generic_views.UpdateAPIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         session.sets.all().delete()
+
         for set in sets:
             try:
                 set_instance = Set.objects.get(id=set.get('id'))
-                Set.edit_data(set_instance=set_instance, set_data=set)
+                Set.edit_data(request,set_instance=set_instance, set_data=set)
                 set_instance.save()
             except Set.DoesNotExist:
                 try:

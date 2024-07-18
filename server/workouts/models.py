@@ -11,7 +11,7 @@ from server.profiles.models import Profile
 from django.db.models import Max
 
 from server.utils import string_to_bool
-from server.workouts.utils import get_value_or_default
+from server.workouts.utils import get_value_or_default, convert_str_time_to_interval_time
 
 
 class MuscleGroup(models.Model):
@@ -143,6 +143,38 @@ class Interval(models.Model):
     index_in_session = models.PositiveIntegerField(
         default=0
     )
+
+    def edit_data(self, request, interval_data):
+        if request.user.profile != self.created_by:
+            return PermissionDenied("You can only edit your own sets")
+        interval_instance_fields = {
+            'time': self.time,
+            'distance': self.distance,
+            'level': self.level,
+            'pace': self.pace,
+
+        }
+        # TODO: Check if all the fields are the same, to not make the edits
+
+        interval_data_fields = {
+            'time': interval_data.get('time'),
+            'distance': int(interval_data.get('distance')),
+            'level': int(interval_data.get('level')),
+            'pace': int(interval_data.get('pace')),
+
+        }
+
+        if interval_data_fields == interval_instance_fields:
+            return self
+
+        splitted_time = interval_data.get('time', '0:0:0').split(':')
+        self.time = datetime.time(int(splitted_time[0]), int(splitted_time[1]), int(splitted_time[2]))
+        self.weight = interval_data['distance']
+        self.min_reps = interval_data['level']
+        self.max_reps = interval_data['pace']
+
+        self.save()
+        return self
 
 
 class Exercise(models.Model):
@@ -309,9 +341,13 @@ class ExerciseSession(models.Model):
                 rest.edit_session(exercise_set['data']['minutes'], exercise_set['data']['seconds'])
                 continue
             # TODO: Check if the item is rest or interval
+            if exercise_set['type'] == 'interval':
+                interval_instance = Interval.objects.get(pk=exercise_set['id'])
+                interval_instance.edit_data(request, exercise_set.get('data', {}))
+                continue
             try:
                 set_instance = Set.objects.get(pk=exercise_set['id'])
-                Set.edit_data(set_instance, exercise_set.get('data', {}))
+                Set.edit_data(request, set_instance, exercise_set.get('data', {}))
             except Set.DoesNotExist:
                 return models.ObjectDoesNotExist
         exercise_session.notes = notes
@@ -361,7 +397,6 @@ class ExerciseSession(models.Model):
     def add_interval(request, exercise_session, interval_data):
         from server.workouts.utils import convert_str_time_to_interval_time
 
-        # {'distance': '3000', 'level': '', 'pace': '5', 'time': '0:2:0'}
         transformed_time = convert_str_time_to_interval_time(interval_data.get('time', '0:0:0'))
 
         interval_instance = Interval.objects.create(

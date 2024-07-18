@@ -48,6 +48,7 @@ class LoginView(authtoken_views.ObtainAuthToken):
         })
 
 
+
 class RegisterView(rest_generic_views.CreateAPIView):
     permission_classes = []
     authentication_classes = [ModelBackend]
