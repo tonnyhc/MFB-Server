@@ -161,9 +161,9 @@ DATABASES = {
 }
 
 
-CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_URL = config('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND')
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = config('CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP')
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
