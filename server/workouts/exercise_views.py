@@ -139,6 +139,20 @@ class EditExerciseSessionView(rest_generic_views.UpdateAPIView):
         return Response("Exercise session updated successfully!", status=status.HTTP_200_OK)
 
 
+class EditExerciseSessionNotesView(rest_generic_views.UpdateAPIView):
+    def put(self, request, *args, **kwargs):
+        session_id = kwargs.get('session_id')
+        notes = request.data.get('notes')
+        try:
+            session = ExerciseSession.objects.get(id=session_id)
+            if session.profile != request.user.profile:
+                return Response(status=status.HTTP_403_FORBIDDEN)
+            session.notes = notes
+            session.save()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except ExerciseSession.DoesNotExist:
+            return Response("Exercise session does not exist!", status=status.HTTP_400_BAD_REQUEST)
+
 class ExercisesByMuscleGroup(views.APIView):
     serializer_class = ExerciseDetailsSerializer
     def get(self, request):

@@ -18,7 +18,7 @@ DEBUG = config("DEBUG", cast=bool)
 if DEBUG:
     ALLOWED_HOSTS = ['*']
 else:
-    ALLOWED_HOSTS = ["beast-physique.com", '127.0.0.1', 'localhost']
+    ALLOWED_HOSTS = ["beast-physique.com", 'fitlette.com', '127.0.0.1', 'localhost']
 
 # ALLOWED_HOSTS += '192.168.0.4'
 

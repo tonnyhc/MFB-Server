@@ -39,7 +39,6 @@ class BaseExerciseSessionSerializer(serializers.ModelSerializer):
         model = ExerciseSession
         fields = "__all__"
 
-
     def to_representation(self, instance):
         representation = super().to_representation(instance)
         representation['session_type'] = 'exercise'
@@ -59,13 +58,29 @@ class ExerciseSessionDetailsSerializer(BaseExerciseSessionSerializer):
             model_class = instance.content_type.model_class()
             if model_class == Rest:
                 final_list.append(
-                    {"id": instance.item.pk, "type": "rest", "data": RestDetailsSerializer(instance.item).data})
+                    {
+                        "id": instance.item.pk,
+                        "type": "rest",
+                        "data": RestDetailsSerializer(instance.item).data,
+                        "last": None}
+                )
             elif model_class == Set:
                 final_list.append(
-                    {"id": instance.item.pk, "type": "set", "data": SetDetailsSerializer(instance.item).data})
+                    {
+                        "id": instance.item.pk,
+                        "type": "set",
+                        "data": SetDetailsSerializer(instance.item).data,
+                        "last": SetDetailsSerializer(
+                            instance.item.history.last()).data if instance.item.history.last() else None
+                    })
             elif model_class == Interval:
                 final_list.append(
-                    {"id": instance.item.pk, "type": "interval", "data": IntervalDetailsSerializer(instance.item).data})
+                    {
+                        "id": instance.item.pk,
+                        "type": "interval",
+                        "data": IntervalDetailsSerializer(instance.item).data,
+                        "last": None
+                    })
 
         return final_list
 
