@@ -1,7 +1,7 @@
 from django.urls import path, include
 
 from server.workouts.exercise_views import CreateExerciseView, ExerciseDetailsView, SearchExerciseView, \
-    GetExerciseProgress, EditExerciseSessionView, ExercisesByMuscleGroup
+    GetExerciseProgress, EditExerciseSessionView, ExercisesByMuscleGroup, EditExerciseSessionNotesView
 from server.workouts.set_views import AddSetToExerciseSession, RemoveSetFromExerciseSession, EditSet
 from server.workouts.views import CreateRoutineView, RoutinesListView, \
     WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, CreateWorkoutView, \
@@ -21,6 +21,7 @@ urlpatterns = [
         path('search/', SearchExerciseView.as_view(), name='search exercise'),
         path('session/', include([
             path('edit/<int:session_id>/', EditExerciseSessionView.as_view(), name='edit exercise session'),
+            path('notes/<int:session_id>/', EditExerciseSessionNotesView.as_view(), name='edit exercise session notes'),
             path("add-set/<int:session_id>/", AddSetToExerciseSession.as_view(), name='add set to exercise session'),
             path('progress/<int:session_id>/', GetExerciseProgress.as_view(), name='exercise session progress'),
             path('delete-set/<int:set_id>/', RemoveSetFromExerciseSession.as_view(),
