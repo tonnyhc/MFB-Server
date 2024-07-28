@@ -73,7 +73,6 @@ class WorkoutSessionEditView(rest_generic_views.UpdateAPIView):
         return Response(self.serializer_class(edited_session).data, status=status.HTTP_200_OK)
 
 
-
 class WorkoutSessionDeleteView(rest_generic_views.DestroyAPIView):
     def delete(self, request, *args, **kwargs):
         workout_id = kwargs.get('pk')
@@ -138,6 +137,23 @@ class CreateRoutineView(rest_generic_views.CreateAPIView):
         except ValidationError as error:
             return Response(error.message,
                             status=status.HTTP_400_BAD_REQUEST)
+
+
+class AddWorkoutToRoutineView(rest_generic_views.UpdateAPIView):
+    def put(self, request, *args, **kwargs):
+        workout_plan_id = kwargs.get('id')
+        workout_id = request.data.get('workout_id')
+        try:
+            workout_plan = WorkoutPlan.objects.get(pk=workout_plan_id)
+            workout = WorkoutSession.objects.get(pk=workout_id)
+        except WorkoutPlan.DoesNotExist:
+            return Response("Workout plan does not exist.", status=status.HTTP_400_BAD_REQUEST)
+        except WorkoutSession.DoesNotExist:
+            return Response("Workout does not exist.", status=status.HTTP_400_BAD_REQUEST)
+        if workout_plan.created_by != request.user.profile:
+            return Response("You can only add workouts to your own workout plans!", status=status.HTTP_401_UNAUTHORIZED)
+        workout_plan.workouts.add(workout)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class DeleteWorkoutPlanView(rest_generic_views.DestroyAPIView):

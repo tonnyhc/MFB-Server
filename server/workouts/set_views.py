@@ -48,7 +48,6 @@ class EditSet(views.APIView):
             data = request.data
             set_data = data.get('data')
 
-
             weight = set_data.get('weight')
             converted_weight = convert_str_to_float(weight)
             set_obj = {
@@ -64,6 +63,7 @@ class EditSet(views.APIView):
             serializer.is_valid(raise_exception=True)
 
             updated_instance = Set.edit_data(request, set_instance, set_obj)
+            updated_instance.save()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Set.DoesNotExist:
             return Response('There was an error updating the set!', status=status.HTTP_400_BAD_REQUEST)
