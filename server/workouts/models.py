@@ -108,8 +108,10 @@ class Set(models.Model):
             'to_failure': bool(set_data.get('to_failure')),
             'bodyweight': bool(set_data.get('bodyweight'))
         }
-
+        # print(set_data_fields)
+        # print(set_intance_fields)
         if set_data_fields == set_intance_fields:
+            # print("The fields are the same")
             return set_instance
 
         set_instance.reps = set_data['reps']

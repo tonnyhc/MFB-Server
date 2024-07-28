@@ -100,7 +100,6 @@ class GetExerciseProgress(views.APIView):
         return Response(return_array, status=status.HTTP_200_OK)
 
 
-
 # TODO: Fix this view
 class EditExerciseSessionView(rest_generic_views.UpdateAPIView):
     serializer_class = ExerciseSessionEditSerializer
@@ -122,7 +121,7 @@ class EditExerciseSessionView(rest_generic_views.UpdateAPIView):
         for set in sets:
             try:
                 set_instance = Set.objects.get(id=set.get('id'))
-                Set.edit_data(request,set_instance=set_instance, set_data=set)
+                Set.edit_data(request, set_instance=set_instance, set_data=set)
                 set_instance.save()
             except Set.DoesNotExist:
                 try:
@@ -134,7 +133,6 @@ class EditExerciseSessionView(rest_generic_views.UpdateAPIView):
                 set_instance.save()
                 session.save()
         session.save()
-
 
         return Response("Exercise session updated successfully!", status=status.HTTP_200_OK)
 
@@ -153,8 +151,10 @@ class EditExerciseSessionNotesView(rest_generic_views.UpdateAPIView):
         except ExerciseSession.DoesNotExist:
             return Response("Exercise session does not exist!", status=status.HTTP_400_BAD_REQUEST)
 
+
 class ExercisesByMuscleGroup(views.APIView):
     serializer_class = ExerciseDetailsSerializer
+
     def get(self, request):
         muscle_groups = MuscleGroup.objects.all()
         final_list = []
