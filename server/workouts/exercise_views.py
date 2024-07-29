@@ -164,7 +164,7 @@ class ExercisesByMuscleGroup(views.APIView):
                 "exercises": []
             }
             for exercise in muscle_group.exercise_set.all():
-                if exercise.created_by:
+                if exercise.created_by and exercise.created_by != request.user.profile:
                     continue
                 muscle_group_obj['exercises'].append(
                     self.serializer_class(exercise).data
