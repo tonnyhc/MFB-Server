@@ -5,6 +5,7 @@ from django.db import models, IntegrityError
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin, Group, Permission
 from rest_framework.exceptions import ValidationError
+from simple_history.models import HistoricalRecords
 
 from server.mixins import ChoicesEnumMixin
 from server.models_utils import MAX_LEN_ACCOUNT_USERNAME
@@ -93,7 +94,6 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
 
 UserModel = get_user_model()
 
-
 class ConfirmationCodeTypeChoices(ChoicesEnumMixin, Enum):
     AccountVerification = 'AccountVerification'
     ForgottenPassword = "ForgottenPassword"
@@ -114,3 +114,21 @@ class ConfirmationCode(models.Model):
 
     def __str__(self):
         return self.code
+
+
+class Username(models.Model):
+    username = models.CharField(
+        max_length=MAX_LEN_ACCOUNT_USERNAME,
+        unique=True,
+        error_messages={
+            'unique': "A user with this username already exists. "
+        }
+    )
+    user = models.ForeignKey(
+        UserModel,
+        on_delete=models.CASCADE,
+        related_name='usernames'
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    history = HistoricalRecords()

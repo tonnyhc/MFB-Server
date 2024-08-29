@@ -8,12 +8,13 @@ from django.contrib.auth import get_user_model, login, authenticate
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.core.validators import EmailValidator
 from rest_framework import generics as rest_generic_views, views as rest_views, status
 from rest_framework.authtoken import views as authtoken_views
 from rest_framework.authtoken import models as authtoken_models
 from rest_framework.response import Response
 
-from server.authentication.models import ConfirmationCode
+from server.authentication.models import ConfirmationCode, Username
 from server.authentication.serializers import LoginSerializer, RegisterSerializer, \
     ConfirmVerificationCodeForPasswordResetSerializer, ResetPasswordSerializer, ChangePasswordSerializer
 from server.authentication.utils import generate_confirmation_code
@@ -46,7 +47,6 @@ class LoginView(authtoken_views.ObtainAuthToken):
             'is_verified': user.is_verified,
             'key': token.key,
         })
-
 
 
 class RegisterView(rest_generic_views.CreateAPIView):
@@ -257,3 +257,48 @@ class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     callback_url = "http://127.0.0.1:8000/accounts/google/login/callback/"
     client_class = OAuth2Client
+
+
+class CheckEmailAvailability(rest_views.APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request, *args, **kwargs):
+        email_to_check = kwargs.get('email')
+        # Validate the email format
+        validator = EmailValidator()
+        try:
+            validator(email_to_check)
+        except ValidationError:
+            return Response(
+                {"error": "Invalid email format."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if the email is already registered
+        if EmailAddress.objects.filter(email=email_to_check).exists():
+            return Response(
+                {"error": "Email is already registered."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Email is valid and not registered
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CheckUsernameAvailability(rest_views.APIView):
+    permission_classes = []
+    authentication_classes = []
+
+    def get(self, request, *args, **kwargs):
+        username_to_check = kwargs.get('username')
+
+        # Check if the username is already registered
+        if Username.objects.filter(username=username_to_check).exists():
+            return Response(
+                {"error": "Username is already registered."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Username is valid and not registered
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -3,7 +3,7 @@ from django.urls import path, include
 from server.authentication.views import RegisterView, LogoutView, LoginView, ConfirmEmail, ForgottenPasswordView, \
     ConfirmVerificationCodeForPasswordReset, RessetPasswordView, ResentVerificationCode, \
     VerifyAuthTokenAndGetUserDataView, \
-    ChangePasswordView, GoogleLogin
+    ChangePasswordView, GoogleLogin, CheckEmailAvailability, CheckUsernameAvailability
 
 urlpatterns = [
     path('login/', LoginView.as_view(), name='login view'),
@@ -17,6 +17,9 @@ urlpatterns = [
     path('forgotten-password/reset/', RessetPasswordView.as_view(), name='forgotten password reset'),
     path('verify-token/', VerifyAuthTokenAndGetUserDataView.as_view(), name='verify token'),
     path('change-password/', ChangePasswordView.as_view(), name='change password'),
+    path('check-email-availability/<str:email>', CheckEmailAvailability.as_view(), name='check email availability'),
+    path('check-username-availability/<str:username>', CheckUsernameAvailability.as_view(),
+         name='check username availability'),
     # social auth
     path('social/', include([
         path('google/', GoogleLogin.as_view(), name='google login')

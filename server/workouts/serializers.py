@@ -54,7 +54,6 @@ class WorkoutSessionDetailsSerializer(BaseWorkoutSessionSerializer):
 class BaseRoutineSerializer(serializers.ModelSerializer):
     created_by = BaseProfileSerializer()
     created_at = serializers.SerializerMethodField()
-
     class Meta:
         model = WorkoutPlan
         fields = ("name", "id", "total_workouts", "workouts", "created_by", 'created_at')
@@ -78,6 +77,7 @@ class RoutineDetailsSerializer(BaseRoutineSerializer):
 
 class RoutinesListSerializer(BaseRoutineSerializer):
     is_active = serializers.SerializerMethodField()
+    workouts = WorkoutDetailsSerializer(many=True)
 
     class Meta(BaseRoutineSerializer.Meta):
         fields = BaseRoutineSerializer.Meta.fields + ('is_active',)
