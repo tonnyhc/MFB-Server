@@ -1,6 +1,5 @@
 from rest_framework import serializers
 
-from server.workouts.models import Exercise, ExerciseSession, Rest, Set, Interval, SupersetSession
 from server.workouts.set_serializers import SetDetailsSerializer, RestDetailsSerializer, IntervalDetailsSerializer
 
 
@@ -8,6 +7,7 @@ class BaseExerciseSerializer(serializers.ModelSerializer):
     video_tutorial = serializers.SerializerMethodField()
 
     class Meta:
+        from server.workouts.models import Exercise
         model = Exercise
         fields = ('id', 'name', 'targeted_muscle_groups',
                   'instructions', 'video_tutorial', 'tips_and_tricks',
@@ -36,6 +36,7 @@ class BaseExerciseSessionSerializer(serializers.ModelSerializer):
     exercise = BaseExerciseSerializer()
 
     class Meta:
+        from server.workouts.models import ExerciseSession
         model = ExerciseSession
         fields = "__all__"
 
@@ -52,6 +53,7 @@ class ExerciseSessionDetailsSerializer(BaseExerciseSessionSerializer):
         fields = BaseExerciseSessionSerializer.Meta.fields
 
     def get_session_data(self, obj):
+        from server.workouts.models import Rest, Set ,Interval
         exercise_session_items = obj.exercisesessionitem_set.all()
         final_list = []
         for instance in exercise_session_items:
@@ -115,6 +117,7 @@ class BaseSupersetSessionSerializer(serializers.ModelSerializer):
     exercises = ExerciseSessionDetailsSerializer(many=True)
 
     class Meta:
+        from server.workouts.models import SupersetSession
         model = SupersetSession
         fields = ('id', 'created_by', 'created_at', 'exercises', 'notes')
 
@@ -128,5 +131,6 @@ class SupersetSessionSerializerNameOnly(BaseSupersetSessionSerializer):
     exercises = ExerciseSessionSerializerNameOnly(many=True)
 
     class Meta:
+        from server.workouts.models import SupersetSession
         model = SupersetSession
         fields = ('id', 'exercises')

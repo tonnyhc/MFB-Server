@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from server.workouts.models import Set, Rest, Interval
+from server.workouts.models import Set, Interval, Rest
 
 
 class BaseSetSerializer(serializers.ModelSerializer):

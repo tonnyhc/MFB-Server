@@ -27,7 +27,8 @@ def create_exercise_sessions_for_workout(request, workout_session, exercise_sess
     sessions = []
 
     for exercise_session in exercise_sessions:
-        session_type = exercise_session['session_type']
+        print(exercise_session)
+        session_type = exercise_session.get('session_type')
 
         if session_type == 'superset':
             superset_workout_session = create_superset_session(request, workout_session, exercise_session)
@@ -42,7 +43,6 @@ def create_exercise_sessions_for_workout(request, workout_session, exercise_sess
 def create_exercise_workout_session(request, workout_session, exercise_session):
     from server.workouts.models import ExerciseSession, WorkoutExerciseSession
     from django.contrib.contenttypes.models import ContentType
-
     session_order = exercise_session.get('order', 0)
     exercise = exercise_session['exercise']
     session_data = exercise_session['session_data']
@@ -55,9 +55,8 @@ def create_exercise_workout_session(request, workout_session, exercise_session):
         content_type=exercise_content_type,
         object_id=exercise_session.id,
         workout_session=workout_session,
-        order=session_order
+        order=session_order or 0
     )
-
     exercise_workout_session.save()
     return exercise_workout_session
 
@@ -128,8 +127,8 @@ def update_workout_session_exercises(request, workout_session, exercises):
     from server.workouts.models import ExerciseSession, SupersetSession
     session_instance_exercises = workout_session.exercises.all()
     final_exercises = remove_exercises_not_in_list(session_instance_exercises, exercises)
-    add_new_exercise_sessions_to_workout_session(request, workout_session, exercises)
-    # TODO: Implement edit exercise session
+    exercises_to_add = add_new_exercise_sessions_to_workout_session(request, workout_session, exercises)
+    # # TODO: Implement edit exercise session
     for exercise_session in final_exercises:
         exercise_data = next((exercise for exercise in exercises if exercise['id'] == exercise_session.object_id), None)
         if exercise_session.content_type.model == 'supersetsession':
@@ -138,26 +137,30 @@ def update_workout_session_exercises(request, workout_session, exercises):
             continue
 
         ExerciseSession.edit_session(request, exercise_session, exercise_data)
-
+    workout_session.add_exercise_sessions(exercises_to_add)
+    workout_session.save()
     return final_exercises
 
 
 def add_new_exercise_sessions_to_workout_session(request, workout_session, exercises):
     from server.workouts.models import ExerciseSession
+    new_exercises = []
     for session in exercises:
         session_type = session.get('session_type')
+        session_id = session.get('id')
+        exercise = session.get('exercise')
         # TODO: Handle the superset logic
         if session_type == 'superset':
             continue
         try:
-            ExerciseSession.objects.get(pk=session['id'])
+            if isinstance(session_id, int):
+                ExerciseSession.objects.get(pk=session['id'])
+            else:
+                raise ExerciseSession.DoesNotExist
         except ExerciseSession.DoesNotExist:
-            exercise = session['exercise']
-            session = ExerciseSession.create_session(request, exercise['name'], exercise['id'],
-                                                     exercise['session_data'])
-            workout_session.add_exercise([session])
-
-
+            new_session = create_exercise_workout_session(request, workout_session, session)
+            new_exercises.append(new_session)
+    return new_exercises
 def remove_exercises_not_in_list(session_exercises: object, list_exercises: object) -> object:
     """
         Removes exercises from the workout or superset session that are not in the provided list of exercises.
@@ -178,10 +181,6 @@ def remove_exercises_not_in_list(session_exercises: object, list_exercises: obje
         if (hasattr(exercise, 'content_object') and exercise.content_object.pk not in list_exercise_ids) or
            (not hasattr(exercise, 'content_object') and exercise.pk not in list_exercise_ids)
     ]
-    # exercises_to_remove = [
-    #     exercise for exercise in session_exercises
-    #     if exercise.content_object.pk not in list_exercise_ids
-    # ]
 
     # Bulk delete exercises that are not in the new list
     if exercises_to_remove:

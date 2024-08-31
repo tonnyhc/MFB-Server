@@ -11,7 +11,8 @@ from server.profiles.models import Profile
 from django.db.models import Max
 
 from server.utils import string_to_bool
-from server.workouts.utils import get_value_or_default, convert_str_time_to_interval_time
+from server.workouts.utils import get_value_or_default, convert_str_time_to_interval_time, \
+    create_exercise_sessions_for_workout
 
 
 class MuscleGroup(models.Model):
@@ -497,7 +498,7 @@ class WorkoutSession(models.Model):
         related_name='workout_sessions'
     )
 
-    def add_exercise_sessions(self, exercise_sessions):
+    def add_exercise_sessions(self, exercise_sessions: list):
         self.exercises.add(*exercise_sessions)
         self.save()
         return self
@@ -546,10 +547,7 @@ class WorkoutSession(models.Model):
         workout_name = new_data.get('name')
         exercises = new_data.get('exercises')
 
-        updated_exercises = update_workout_session_exercises(request, workout_session, exercises)
-
         workout_session.name = workout_name
-        workout_session.exercises.set(updated_exercises)
         workout_session.save()
         return workout_session
 

@@ -20,6 +20,15 @@ class BaseWorkoutSessionSerializer(serializers.ModelSerializer):
         return transform_timestamp(str(obj.created_at))
 
 
+class WorkoutListSerializer(BaseWorkoutSessionSerializer):
+    exercises = serializers.SerializerMethodField()
+    class Meta(BaseWorkoutSessionSerializer.Meta):
+        fields = BaseWorkoutSessionSerializer.Meta.fields + ('exercises',)
+
+    def get_exercises(self, obj):
+        return get_serialized_exercises(obj)
+
+
 # old was BaseWorkoutSerializer
 class WorkoutDetailsSerializer(BaseWorkoutSessionSerializer):
     exercises = serializers.SerializerMethodField()
@@ -42,6 +51,7 @@ class WorkoutSessionDetailsSerializer(BaseWorkoutSessionSerializer):
     def get_exercises(self, obj):
         exercises = []
         for exercise in obj.exercises.all():
+            print(exercise)
             exercise_type = exercise.content_type.model
             exercise_instance = exercise.content_object
             if exercise_type == 'exercisesession':
@@ -87,6 +97,8 @@ class RoutinesListSerializer(BaseRoutineSerializer):
         profile = request.user.profile
         profile_active_routine = profile.activeroutine_set.first()
         return obj == profile_active_routine
+
+
 
 
 class WorkoutPlanDetailsSerializer(BaseRoutineSerializer):
