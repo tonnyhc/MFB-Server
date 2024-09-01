@@ -181,43 +181,13 @@ class Interval(models.Model):
 
 
 class Exercise(models.Model):
-    MAX_LEN_TIPS = 255
     MAX_LEN_NAME = 50
     name = models.CharField(
         max_length=MAX_LEN_NAME,
     )
-    # cover_photo = CloudinaryField('image', blank=True, null=True)
     targeted_muscle_groups = models.ManyToManyField(MuscleGroup, blank=True,
                                                     null=True)
-    instructions = models.TextField(
-        blank=True,
-        null=True
-    )
-
-    video_tutorial = CloudinaryField(resource_type="video", blank=True, null=True)
-    tips_and_tricks = models.TextField(
-        max_length=MAX_LEN_TIPS,
-        blank=True,
-        null=True,
-    )
-
-    # If this is a custom exercise for the given user then set it, otherwise if it comes from the server's
-    # already declared exercises skip it
-    created_by = models.ForeignKey(
-        Profile,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-    is_published = models.BooleanField(
-        default=False
-    )
     is_cardio = models.BooleanField(
-        blank=True,
-        null=True,
         default=False,
     )
     bodyweight = models.BooleanField(
@@ -226,6 +196,101 @@ class Exercise(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class CustomExercise(models.Model):
+    MAX_LEN_NAME = 50
+    name = models.CharField(
+        max_length=MAX_LEN_NAME,
+    )
+    targeted_muscle_groups = models.ManyToManyField(MuscleGroup, blank=True,
+                                                    null=True)
+    is_cardio = models.BooleanField(
+        default=False,
+    )
+    bodyweight = models.BooleanField(
+        default=False
+    )
+
+
+
+    created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    history = HistoricalRecords()
+
+    @staticmethod
+    def create_exercise(request, exercise_data, *args, **kwargs):
+        with transaction.atomic():
+
+            exercise_name = exercise_data.get('name', '')
+            bodyweight_compatible = exercise_data.get('bodyweight_compatible', False)
+            cardio_exercise = exercise_data.get('cardio_exercise', False)
+            instructions = exercise_data.get('instructions', [])
+            muscle_groups = exercise_data.get('muscle_groups', [])
+            if not exercise_name:
+                return PermissionDenied("Exercise name is required")
+            if len(muscle_groups) <= 0 and not cardio_exercise:
+                return PermissionDenied("Exercise must have at least one muscle group")
+            muscle_groups_for_instance = []
+            for group in muscle_groups:
+                try:
+                    muscle_group_instance = MuscleGroup.objects.get(id=group.get('id', None))
+                    muscle_groups_for_instance.append(muscle_group_instance)
+                except MuscleGroup.DoesNotExist:
+                    return PermissionDenied("Muscle group instance does not exist!")
+
+            exercise_instance = CustomExercise.objects.create(name=exercise_name,
+                                                              is_cardio=cardio_exercise, bodyweight=bodyweight_compatible,
+                                                              created_by=request.user.profile)
+            exercise_instance.targeted_muscle_groups.set(muscle_groups_for_instance)
+            for instruction in instructions:
+                text = instruction.get('text', '')
+
+                instruction_instance = ExerciseInstruction.create_instance(request, text, exercise_instance)
+                instruction_instance.save()
+            exercise_instance.save()
+            return exercise_instance
+
+
+    def __str__(self):
+        return self.name
+
+class ExerciseInstruction(models.Model):
+    text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
+    history = HistoricalRecords()
+
+    # Generic relation fields
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    exercise_content_object = GenericForeignKey('content_type', 'object_id')
+
+    @staticmethod
+    def create_instance(request, text: str, exercise_instance):
+        content_type = ContentType.objects.get_for_model(exercise_instance)
+        return ExerciseInstruction.objects.create(
+            text=text,
+            exercise_content_object=exercise_instance,
+            created_by=request.user.profile,
+            content_type=content_type,
+            object_id=exercise_instance.id
+        )
+
+    def __str__(self):
+        return self.text
+
+# class ExerciseInstruction(models.Model):
+#     text = models.TextField()
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
+#     history = HistoricalRecords()
+#     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name='instructions')
+#
+#     @staticmethod
+#     def create_instance(request, text: str, exercise_instance: Exercise):
+#         return ExerciseInstruction.objects.create(text=text, exercise=exercise_instance,
+#                                                   created_by=request.user.profile)
 
 
 class ExerciseSession(models.Model):

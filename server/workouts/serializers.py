@@ -4,7 +4,7 @@ from server.profiles.serializers import BaseProfileSerializer
 from server.utils import transform_timestamp
 from server.workouts.exercise_serializers import ExerciseSessionSerializerNameOnly, ExerciseSessionDetailsSerializer, \
     BaseSupersetSessionSerializer
-from server.workouts.models import WorkoutPlan, WorkoutSession, MuscleGroup
+from server.workouts.models import WorkoutPlan, WorkoutSession, MuscleGroup, CustomExercise
 from server.workouts.utils import get_serialized_exercises
 
 
@@ -20,8 +20,15 @@ class BaseWorkoutSessionSerializer(serializers.ModelSerializer):
         return transform_timestamp(str(obj.created_at))
 
 
+class CustomExerciseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomExercise
+        fiels = "__all__"
+
+
 class WorkoutListSerializer(BaseWorkoutSessionSerializer):
     exercises = serializers.SerializerMethodField()
+
     class Meta(BaseWorkoutSessionSerializer.Meta):
         fields = BaseWorkoutSessionSerializer.Meta.fields + ('exercises',)
 
@@ -64,6 +71,7 @@ class WorkoutSessionDetailsSerializer(BaseWorkoutSessionSerializer):
 class BaseRoutineSerializer(serializers.ModelSerializer):
     created_by = BaseProfileSerializer()
     created_at = serializers.SerializerMethodField()
+
     class Meta:
         model = WorkoutPlan
         fields = ("name", "id", "total_workouts", "workouts", "created_by", 'created_at')
@@ -97,8 +105,6 @@ class RoutinesListSerializer(BaseRoutineSerializer):
         profile = request.user.profile
         profile_active_routine = profile.activeroutine_set.first()
         return obj == profile_active_routine
-
-
 
 
 class WorkoutPlanDetailsSerializer(BaseRoutineSerializer):

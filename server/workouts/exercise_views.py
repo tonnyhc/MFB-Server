@@ -1,16 +1,14 @@
-import time
-
 from django.core.exceptions import ValidationError
 from rest_framework import generics as rest_generic_views, status, serializers, views
-from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
 from server.utils import transform_timestamp
 from server.workouts.exercise_serializers import ExerciseDetailsSerializer, BaseExerciseSerializer, \
-    CreateExerciseSerializer, ExerciseSessionEditSerializer
-from server.workouts.models import Exercise, ExerciseSession, Set, MuscleGroup
-from .tasks import upload_exercise_video_to_cloudinary
-import base64
+    ExerciseSessionEditSerializer, CreateCustomExerciseSerializer
+from server.workouts.models import Exercise, ExerciseSession, Set, MuscleGroup, CustomExercise
+
+
+# from .serializers import CustomExerciseSerializer
 
 
 class ExerciseDetailsView(rest_generic_views.RetrieveAPIView):
@@ -38,13 +36,16 @@ class SearchExerciseView(rest_generic_views.ListAPIView):
         }, status=status.HTTP_200_OK)
 
 
-class CreateExerciseView(rest_generic_views.CreateAPIView):
+
+
+
+class CreateCustomExerciseView(rest_generic_views.CreateAPIView):
     queryset = Exercise
-    serializer_class = CreateExerciseSerializer
-    parser_classes = (MultiPartParser, FormParser)
+    serializer_class = CreateCustomExerciseSerializer
 
     def perform_create(self, serializer):
         user_profile = self.request.user.profile
+
         if not user_profile:
             return Response({'There was a problem creating the exercise, are you sure you have set up your profile?'},
                             status=status.HTTP_400_BAD_REQUEST)
@@ -54,23 +55,12 @@ class CreateExerciseView(rest_generic_views.CreateAPIView):
     def post(self, request, *args, **kwargs):
         try:
             exercise_data = request.data
-            to_publish = request.data.get('publish')
-            video = request.data.get('video_tutorial')
             serializer = self.serializer_class(data=exercise_data)
             serializer.is_valid(raise_exception=True)
-            exercise = self.perform_create(serializer)
-            if to_publish:
-                exercise.is_published = True
-                exercise.save()
+            exercise = CustomExercise.create_exercise(request, exercise_data)
 
-            if video:
-                # Save video to a temporary location
-                encoded_video = base64.b64encode(video.read()).decode('utf-8')
+            return Response(self.serializer_class(exercise).data, status=status.HTTP_201_CREATED)
 
-                # Trigger Celery task to upload video to Cloudinary
-                upload_exercise_video_to_cloudinary.delay(encoded_video, exercise.id)
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
         except serializers.ValidationError as e:
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -155,27 +145,33 @@ class EditExerciseSessionNotesView(rest_generic_views.UpdateAPIView):
 class ExercisesByMuscleGroup(views.APIView):
     serializer_class = ExerciseDetailsSerializer
 
+    # custom_exercise_serializer_class = CustomExerciseSerializer
+
     def get(self, request):
         muscle_groups = MuscleGroup.objects.all()
         final_list = []
         for muscle_group in muscle_groups:
             muscle_group_obj = {
                 "name": muscle_group.name,
-                "exercises": []
+                "exercises": self.serializer_class(muscle_group.exercise_set.all(), many=True).data,
             }
-            for exercise in muscle_group.exercise_set.all():
-                if exercise.created_by and exercise.created_by != request.user.profile:
-                    continue
-                muscle_group_obj['exercises'].append(
-                    self.serializer_class(exercise).data
-                )
             final_list.append(muscle_group_obj)
+
+        # getting the cardio exercises
         cardio_exercise_obj = {
             'name': "Cardio",
             "exercises": []
         }
-        for exercise in Exercise.objects.filter(is_cardio=True, created_by=None or request.user.profile):
+        for exercise in Exercise.objects.filter(is_cardio=True).all():
             cardio_exercise_obj['exercises'].append(self.serializer_class(exercise).data)
         final_list.append(cardio_exercise_obj)
+
+        # getting the user exercises
+        # custom_exercises_obj = {
+        #     "name": "Custom",
+        #     "exercises": [self.custom_exercise_serializer_class(exercise).data for exercise in
+        #                   CustomExercise.objects.filter(created_by=request.user.profile).all()]
+        # }
+        # final_list.append(custom_exercises_obj)
 
         return Response(final_list, status=status.HTTP_200_OK)

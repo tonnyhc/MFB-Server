@@ -1,22 +1,21 @@
 from rest_framework import serializers
 
+from server.workouts.models import CustomExercise
 from server.workouts.set_serializers import SetDetailsSerializer, RestDetailsSerializer, IntervalDetailsSerializer
 
 
-class BaseExerciseSerializer(serializers.ModelSerializer):
-    video_tutorial = serializers.SerializerMethodField()
+class CustomExerciseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomExercise
+        # fields = '__all__'
+        exclude = ['created_by', 'created_at']
 
+
+class BaseExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         from server.workouts.models import Exercise
         model = Exercise
-        fields = ('id', 'name', 'targeted_muscle_groups',
-                  'instructions', 'video_tutorial', 'tips_and_tricks',
-                  'created_by', 'created_at', 'is_published', 'is_cardio', 'bodyweight')
-
-    def get_video_tutorial(self, obj):
-        if obj.video_tutorial:
-            return obj.video_tutorial.url
-        return None
+        fields = "__all__"
 
 
 class ExerciseDetailsSerializer(BaseExerciseSerializer):
@@ -28,7 +27,6 @@ class ExerciseDetailsSerializer(BaseExerciseSerializer):
         # Customize targeted_muscle_groups to include names instead of ids
         targeted_muscle_groups = instance.targeted_muscle_groups.all()
         representation['targeted_muscle_groups'] = [group.name for group in targeted_muscle_groups]
-        representation['created_by'] = instance.created_by.user.username if instance.created_by else None
         return representation
 
 
@@ -53,7 +51,7 @@ class ExerciseSessionDetailsSerializer(BaseExerciseSessionSerializer):
         fields = BaseExerciseSessionSerializer.Meta.fields
 
     def get_session_data(self, obj):
-        from server.workouts.models import Rest, Set ,Interval
+        from server.workouts.models import Rest, Set, Interval
         exercise_session_items = obj.exercisesessionitem_set.all()
         final_list = []
         for instance in exercise_session_items:
@@ -107,9 +105,8 @@ class ExerciseSessionEditSerializer(serializers.Serializer):
         fields = ('sets',)
 
 
-class CreateExerciseSerializer(BaseExerciseSerializer):
-    class Meta(BaseExerciseSerializer.Meta):
-        fields = BaseExerciseSerializer.Meta.fields
+class CreateCustomExerciseSerializer(CustomExerciseSerializer):
+    pass
 
 
 # superset
