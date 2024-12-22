@@ -37,6 +37,7 @@ class CreateWorkoutView(rest_generic_views.CreateAPIView):
     details_serializer = WorkoutSessionDetailsSerializer
 
     def post(self, request, *args, **kwargs):
+        print(request.data)
         workout_name = request.data.get('name')
         exercises = request.data.get('exercises')
         if not workout_name:

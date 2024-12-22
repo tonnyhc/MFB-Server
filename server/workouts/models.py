@@ -1,6 +1,5 @@
 import datetime
 
-from cloudinary.models import CloudinaryField
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError, PermissionDenied
@@ -11,8 +10,7 @@ from server.profiles.models import Profile
 from django.db.models import Max
 
 from server.utils import string_to_bool
-from server.workouts.utils import get_value_or_default, convert_str_time_to_interval_time, \
-    create_exercise_sessions_for_workout
+from server.workouts.utils import get_value_or_default
 
 
 class MuscleGroup(models.Model):
@@ -212,8 +210,6 @@ class CustomExercise(models.Model):
         default=False
     )
 
-
-
     created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     history = HistoricalRecords()
@@ -240,7 +236,8 @@ class CustomExercise(models.Model):
                     return PermissionDenied("Muscle group instance does not exist!")
 
             exercise_instance = CustomExercise.objects.create(name=exercise_name,
-                                                              is_cardio=cardio_exercise, bodyweight=bodyweight_compatible,
+                                                              is_cardio=cardio_exercise,
+                                                              bodyweight=bodyweight_compatible,
                                                               created_by=request.user.profile)
             exercise_instance.targeted_muscle_groups.set(muscle_groups_for_instance)
             for instruction in instructions:
@@ -251,9 +248,9 @@ class CustomExercise(models.Model):
             exercise_instance.save()
             return exercise_instance
 
-
     def __str__(self):
         return self.name
+
 
 class ExerciseInstruction(models.Model):
     text = models.TextField()
@@ -279,18 +276,6 @@ class ExerciseInstruction(models.Model):
 
     def __str__(self):
         return self.text
-
-# class ExerciseInstruction(models.Model):
-#     text = models.TextField()
-#     created_at = models.DateTimeField(auto_now_add=True)
-#     created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
-#     history = HistoricalRecords()
-#     exercise = models.ForeignKey(Exercise, on_delete=models.CASCADE, related_name='instructions')
-#
-#     @staticmethod
-#     def create_instance(request, text: str, exercise_instance: Exercise):
-#         return ExerciseInstruction.objects.create(text=text, exercise=exercise_instance,
-#                                                   created_by=request.user.profile)
 
 
 class ExerciseSession(models.Model):
@@ -429,8 +414,8 @@ class ExerciseSession(models.Model):
         set_instance = Set.objects.create(
             weight=float(set_data.get('weight', 0)),
             reps=int(set_data.get('reps', 0)),
-            min_reps=int(set_data.get('min_reps', 0)),
-            max_reps=int(set_data.get('max_reps', 0)),
+            min_reps=int(set_data.get('min_reps', 0) or 0),
+            max_reps=int(set_data.get('max_reps', 0) or 0),
             to_failure=string_to_bool(set_data.get('to_failure', False)),  # Convert string to boolean
             bodyweight=string_to_bool(set_data.get('bodyweight', False)),  # Convert string to boolean
             created_by=request.user.profile
@@ -539,35 +524,73 @@ class ExerciseSessionItem(models.Model):
         ordering = ['order']
 
 
-class WorkoutSession(models.Model):
+class BaseWorkoutModel(models.Model):
     MAX_LEN_NAME = 50
-    name = models.CharField(
-        max_length=MAX_LEN_NAME
-    )
-    # TODO: On a later basis add a field for total sets per muscle group or something similar
+    name = models.CharField(max_length=MAX_LEN_NAME)
     total_exercises = models.IntegerField()
     total_sets = models.IntegerField()
+    created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class WorkoutTemplate(BaseWorkoutModel):
+    is_published = models.BooleanField(default=True)
+    exercises = models.ManyToManyField("WorkoutExerciseSession", related_name="template_exercises")
+
+    @staticmethod
+    def create_workout_template(request, workout_name, exercises):
+        from server.workouts.utils import create_exercise_sessions_for_workout
+
+        if not workout_name:
+            raise ValidationError("Provide a name for your workout template")
+        if len(exercises) == 0:
+            raise ValidationError("Please add exercises to your workout template")
+
+        workout_session = WorkoutSession.objects.create(
+            name=workout_name,
+            total_exercises=len(exercises),
+            # TODO: Move the total_set and total_weight volume to a signal
+            total_sets=0,
+            # total_weight_volume=0,
+            created_by=request.user.profile,
+
+        )
+
+        exercise_sessions = create_exercise_sessions_for_workout(request, workout_session, exercises)
+        workout_session.exercises.add(*exercise_sessions)
+        workout_session.save()
+        return workout_session
+
+    @staticmethod
+    def publish_template(request, workout_id):
+        user = request.user
+        try:
+            workout = WorkoutTemplate.objects.get(id=workout_id)
+            if workout.created_by != user.profile:
+                raise PermissionDenied("You do not have permission to publish this workout.")
+            workout.is_published = True
+            workout.save()
+            return workout
+        except WorkoutSession.DoesNotExist:
+            raise IntegrityError("Workout does not exist.")
+
+    @staticmethod
+    def edit_template(request, workout_session, new_data):
+        from server.workouts.utils import update_workout_session_exercises
+
+        workout_name = new_data.get('name')
+        exercises = new_data.get('exercises')
+
+        workout_session.name = workout_name
+        workout_session.save()
+        return workout_session
+
+
+class WorkoutSession(BaseWorkoutModel):
     total_weight_volume = models.IntegerField()
-    created_by = models.ForeignKey(
-        Profile,
-        on_delete=models.CASCADE
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-    is_published = models.BooleanField(
-        default=False
-    )
     exercises = models.ManyToManyField(
         'WorkoutExerciseSession',
         related_name='workout_sessions'
     )
-
-    def add_exercise_sessions(self, exercise_sessions: list):
-        self.exercises.add(*exercise_sessions)
-        self.save()
-        return self
-
     @staticmethod
     def create_session(request, workout_name, exercises):
         from server.workouts.utils import create_exercise_sessions_for_workout
@@ -589,30 +612,6 @@ class WorkoutSession(models.Model):
 
         exercise_sessions = create_exercise_sessions_for_workout(request, workout_session, exercises)
         workout_session.exercises.add(*exercise_sessions)
-        workout_session.save()
-        return workout_session
-
-    @staticmethod
-    def publish_workout(request, workout_id):
-        user = request.user
-        try:
-            workout = WorkoutSession.objects.get(id=workout_id)
-            if workout.created_by != user.profile:
-                raise PermissionDenied("You do not have permission to publish this workout.")
-            workout.is_published = True
-            workout.save()
-            return workout
-        except WorkoutSession.DoesNotExist:
-            raise IntegrityError("Workout does not exist.")
-
-    @staticmethod
-    def edit_session(request, workout_session, new_data):
-        from server.workouts.utils import update_workout_session_exercises
-
-        workout_name = new_data.get('name')
-        exercises = new_data.get('exercises')
-
-        workout_session.name = workout_name
         workout_session.save()
         return workout_session
 
