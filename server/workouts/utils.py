@@ -22,16 +22,17 @@ def get_serialized_exercises(obj):
     return exercises
 
 
+
+
 def create_exercise_sessions_for_workout(request, workout_session, exercise_sessions):
     # TODO: do not allow creation of empty sets
     sessions = []
 
     for exercise_session in exercise_sessions:
-        print(exercise_session)
         session_type = exercise_session.get('session_type')
 
         if session_type == 'superset':
-            superset_workout_session = create_superset_session(request, workout_session, exercise_session)
+            superset_workout_session = create_superset_workout_session(request, workout_session, exercise_session)
             sessions.append(superset_workout_session)
         elif session_type == 'exercise':
             exercise_workout_session = create_exercise_workout_session(request, workout_session, exercise_session)
@@ -61,7 +62,7 @@ def create_exercise_workout_session(request, workout_session, exercise_session):
     return exercise_workout_session
 
 
-def create_superset_session(request, workout_session, exercise_session):
+def create_superset_workout_session(request, workout_session, exercise_session):
     from server.workouts.models import SupersetSession, ExerciseSession, WorkoutExerciseSession
     from django.contrib.contenttypes.models import ContentType
 

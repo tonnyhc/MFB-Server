@@ -13,12 +13,15 @@ class BaseWorkoutSessionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = WorkoutSession
-        fields = ('name', 'id', 'total_exercises', 'total_sets', 'total_weight_volume', 'is_published', 'created_at',)
+        fields = ('name', 'id', 'total_exercises', 'total_sets', 'total_weight_volume', 'created_at',)
 
     @staticmethod
     def get_created_at(obj):
         return transform_timestamp(str(obj.created_at))
 
+
+class CreateWorkoutTemplateSerializer(BaseWorkoutSessionSerializer):
+    pass
 
 class CustomExerciseSerializer(serializers.ModelSerializer):
     class Meta:

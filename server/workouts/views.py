@@ -5,11 +5,12 @@ from rest_framework import generics as rest_generic_views, status, views
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, MuscleGroup
+from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, MuscleGroup, WorkoutTemplate
 from server.workouts.serializers import \
     WorkoutPlanCreationSerializer, WorkoutSessionDetailsSerializer, \
     BaseMuscleGroupSerializer, RoutinesListSerializer, \
-    RoutineDetailsSerializer, BaseWorkoutSessionSerializer, WorkoutListSerializer
+    RoutineDetailsSerializer, BaseWorkoutSessionSerializer, WorkoutListSerializer, CreateWorkoutTemplateSerializer, \
+    WorkoutDetailsSerializer
 
 
 # Workouts
@@ -32,12 +33,32 @@ class WorkoutsListView(rest_generic_views.ListAPIView):
         return Response(serialized_query.data, status=status.HTTP_200_OK)
 
 
+class CreateWorkoutTemplateView(rest_generic_views.CreateAPIView):
+    serializer_class = CreateWorkoutTemplateSerializer
+    details_serializer = WorkoutDetailsSerializer
+
+    def post(self, request, *args, **kwargs):
+        workout_name = request.data.get('name')
+        exercises = request.data.get('exercises')
+        if not workout_name:
+            return Response({'name': "Please provide a name for your workout!"}, status=status.HTTP_400_BAD_REQUEST)
+        if not exercises:
+            return Response({"exercises": "The workout must contain exercises!"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            workout = WorkoutTemplate.create_workout_template(request, workout_name, exercises)
+            return Response(self.details_serializer(workout).data, status=status.HTTP_200_OK)
+        except ValidationError as e:
+            return Response({"generic": str(e.message)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            a = 5
+            return Response({"generic": 'There was a problem creating the workout: ' + str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
 class CreateWorkoutView(rest_generic_views.CreateAPIView):
     serializer_class = BaseWorkoutSessionSerializer
     details_serializer = WorkoutSessionDetailsSerializer
 
     def post(self, request, *args, **kwargs):
-        print(request.data)
         workout_name = request.data.get('name')
         exercises = request.data.get('exercises')
         if not workout_name:
