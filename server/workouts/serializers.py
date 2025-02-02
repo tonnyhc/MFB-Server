@@ -4,8 +4,8 @@ from server.profiles.serializers import BaseProfileSerializer
 from server.utils import transform_timestamp
 from server.workouts.exercise_serializers import ExerciseSessionSerializerNameOnly, ExerciseSessionDetailsSerializer, \
     BaseSupersetSessionSerializer
-from server.workouts.models import WorkoutPlan, WorkoutSession, MuscleGroup, CustomExercise
-from server.workouts.utils import get_serialized_exercises
+from server.workouts.models import WorkoutPlan, WorkoutSession, MuscleGroup, CustomExercise, WorkoutTemplate
+from server.workouts.utils import get_serialized_exercises, serializer_exericses_for_session_or_template
 
 
 class BaseWorkoutSessionSerializer(serializers.ModelSerializer):
@@ -23,6 +23,7 @@ class BaseWorkoutSessionSerializer(serializers.ModelSerializer):
 class CreateWorkoutTemplateSerializer(BaseWorkoutSessionSerializer):
     pass
 
+
 class CustomExerciseSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomExercise
@@ -34,6 +35,17 @@ class WorkoutListSerializer(BaseWorkoutSessionSerializer):
 
     class Meta(BaseWorkoutSessionSerializer.Meta):
         fields = BaseWorkoutSessionSerializer.Meta.fields + ('exercises',)
+
+    def get_exercises(self, obj):
+        return get_serialized_exercises(obj)
+
+
+class WorkoutTemplateListSerializer(serializers.ModelSerializer):
+    exercises = serializers.SerializerMethodField()
+
+    class Meta:
+        fields = "__all__"
+        model = WorkoutTemplate
 
     def get_exercises(self, obj):
         return get_serialized_exercises(obj)
@@ -59,16 +71,26 @@ class WorkoutSessionDetailsSerializer(BaseWorkoutSessionSerializer):
         fields = BaseWorkoutSessionSerializer.Meta.fields + ('exercises',)
 
     def get_exercises(self, obj):
-        exercises = []
-        for exercise in obj.exercises.all():
-            print(exercise)
-            exercise_type = exercise.content_type.model
-            exercise_instance = exercise.content_object
-            if exercise_type == 'exercisesession':
-                exercises.append(self.exercise_serializer(exercise_instance).data)
-            elif exercise_type == 'supersetsession':
-                exercises.append(self.superset_serializer(exercise_instance).data)
-        return exercises
+        exercises_for_fn = obj.exercises.all()
+        return serializer_exericses_for_session_or_template(exercises_for_fn,
+                                                            exercise_serializer=self.exercise_serializer,
+                                                            superset_serializer=self.superset_serializer)
+
+
+class WorkoutTemplateSerializer(serializers.ModelSerializer):
+    exercises = serializers.SerializerMethodField()
+    exercise_serializer = ExerciseSessionDetailsSerializer
+    superset_serializer = BaseSupersetSessionSerializer
+
+    class Meta:
+        model = WorkoutTemplate
+        fields = "__all__"
+
+    def get_exercises(self, obj):
+        exercises_for_fn = obj.exercises.all()
+        return serializer_exericses_for_session_or_template(exercises_for_fn,
+                                                            exercise_serializer=self.exercise_serializer,
+                                                            superset_serializer=self.superset_serializer)
 
 
 class BaseRoutineSerializer(serializers.ModelSerializer):

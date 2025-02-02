@@ -417,10 +417,10 @@ class ExerciseSession(models.Model):
         # TODO: Check the items fields and if there are empty dont create the instance
 
         set_instance = Set.objects.create(
-            weight=float(set_data.get('weight', 0)),
-            reps=int(set_data.get('reps', 0)),
-            min_reps=int(set_data.get('min_reps', 0) or 0),
-            max_reps=int(set_data.get('max_reps', 0) or 0),
+            weight=float(set_data['weight']) if set_data.get('weight') not in [None, '', 'null'] else None,
+            reps=int(set_data['reps']) if set_data.get('reps') not in [None, '', 'null'] else None,
+            min_reps=int(set_data['min_reps']) if set_data.get('min_reps') not in [None, '', 'null'] else None,
+            max_reps=int(set_data['max_reps']) if set_data.get('max_reps') not in [None, '', 'null'] else None,
             to_failure=string_to_bool(set_data.get('to_failure', False)),  # Convert string to boolean
             bodyweight=string_to_bool(set_data.get('bodyweight', False)),  # Convert string to boolean
             created_by=request.user.profile

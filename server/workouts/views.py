@@ -10,7 +10,7 @@ from server.workouts.serializers import \
     WorkoutPlanCreationSerializer, WorkoutSessionDetailsSerializer, \
     BaseMuscleGroupSerializer, RoutinesListSerializer, \
     RoutineDetailsSerializer, BaseWorkoutSessionSerializer, WorkoutListSerializer, CreateWorkoutTemplateSerializer, \
-    WorkoutDetailsSerializer
+    WorkoutDetailsSerializer, WorkoutTemplateSerializer, WorkoutTemplateListSerializer
 
 
 # Workouts
@@ -27,6 +27,7 @@ class RoutinesListView(rest_generic_views.ListAPIView):
 class WorkoutsListView(rest_generic_views.ListAPIView):
     queryset = WorkoutSession.objects.all()
     serializer_class = WorkoutListSerializer
+
     def get(self, request, *args, **kwargs):
         query = self.queryset.filter(created_by_id=request.user.profile.id).order_by('-created_at')
         serialized_query = self.serializer_class(query, many=True, context={'request': request})
@@ -46,14 +47,37 @@ class CreateWorkoutTemplateView(rest_generic_views.CreateAPIView):
             return Response({"exercises": "The workout must contain exercises!"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            workout = WorkoutTemplate.create_workout_template(request, workout_name, exercises)
-            return Response(self.details_serializer(workout).data, status=status.HTTP_200_OK)
+            workout_template = WorkoutTemplate.create_workout_template(request, workout_name, exercises)
+            # return Response(self.details_serializer(workout_template).data, status=status.HTTP_200_OK)
+            return Response(status=status.HTTP_201_CREATED)
         except ValidationError as e:
+            workout_template.delete()
             return Response({"generic": str(e.message)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            a = 5
+            workout_template.delete()
             return Response({"generic": 'There was a problem creating the workout: ' + str(e)},
                             status=status.HTTP_400_BAD_REQUEST)
+
+
+class WorkoutTemplateListView(rest_generic_views.ListAPIView):
+    serializer_class = WorkoutTemplateListSerializer
+    queryset = WorkoutTemplate.objects.all()
+    def get(self, request, *args, **kwargs):
+        workout_templates = self.get_queryset().filter(created_by=request.user.profile)
+        serialized_workout_templates = self.serializer_class(workout_templates, many=True, context={'request': request})
+        return Response(serialized_workout_templates.data, status=status.HTTP_200_OK)
+
+
+class WorkoutTemplateDetailsView(rest_generic_views.RetrieveAPIView):
+    queryset = WorkoutTemplate.objects.all()
+    serializer_class = WorkoutTemplateSerializer
+    #
+    # def get(self, request, *args, **kwargs):
+    #     serializer = self.serializer_class
+    #     queryset = self.get_queryset()
+    #     return Response(serializer(queryset, many=True).data, status=status.HTTP_200_OK)
+
+
 class CreateWorkoutView(rest_generic_views.CreateAPIView):
     serializer_class = BaseWorkoutSessionSerializer
     details_serializer = WorkoutSessionDetailsSerializer

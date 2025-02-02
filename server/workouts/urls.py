@@ -6,7 +6,8 @@ from server.workouts.set_views import AddSetToExerciseSession, RemoveSetFromExer
 from server.workouts.views import CreateRoutineView, RoutinesListView, \
     WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, CreateWorkoutView, \
     MuscleGroupsListView, WorkoutSearchView, WorkoutSessionEditView, DeleteWorkoutPlanView, WorkoutSessionDeleteView, \
-    AddWorkoutToRoutineView, WorkoutsListView, CreateWorkoutTemplateView
+    AddWorkoutToRoutineView, WorkoutsListView, CreateWorkoutTemplateView, WorkoutTemplateListView, \
+    WorkoutTemplateDetailsView
 
 urlpatterns = [
     path('routine/', include([
@@ -39,6 +40,8 @@ urlpatterns = [
         path('session/delete/<int:pk>/', WorkoutSessionDeleteView.as_view(), name='workout session delete'),
         path('create/', CreateWorkoutView.as_view(), name='create workout'),
         path('template/create/', CreateWorkoutTemplateView.as_view(), name='create workout template'),
+        path('template/list/', WorkoutTemplateListView.as_view(), name='workout template list view'),
+        path('template/<int:pk>/', WorkoutTemplateDetailsView.as_view(), name='workout template details view'),
         path('search/', WorkoutSearchView.as_view(), name='search workout'),
         # path('publish/<int:id>', publish_workout, name='publish workout')
     ])),

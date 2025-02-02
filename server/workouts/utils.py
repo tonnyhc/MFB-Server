@@ -1,3 +1,6 @@
+from server.workouts.models import WorkoutTemplate, WorkoutTemplateExerciseItem, WorkoutSession
+
+
 def get_serialized_exercises(obj):
     from server.workouts.exercise_serializers import SupersetSessionSerializerNameOnly, \
         ExerciseSessionSerializerNameOnly
@@ -22,8 +25,6 @@ def get_serialized_exercises(obj):
     return exercises
 
 
-
-
 def create_exercise_sessions_for_workout(request, workout_session, exercise_sessions):
     # TODO: do not allow creation of empty sets
     sessions = []
@@ -41,6 +42,12 @@ def create_exercise_sessions_for_workout(request, workout_session, exercise_sess
     return sessions
 
 
+def create_exercise_session_for_workout_template(request, workout_template, exercise_sessions):
+    sessions = []
+    for exercise_session in exercise_sessions:
+        pass
+
+
 def create_exercise_workout_session(request, workout_session, exercise_session):
     from server.workouts.models import ExerciseSession, WorkoutExerciseSession
     from django.contrib.contenttypes.models import ContentType
@@ -52,12 +59,21 @@ def create_exercise_workout_session(request, workout_session, exercise_session):
     )
 
     exercise_content_type = ContentType.objects.get_for_model(ExerciseSession)
-    exercise_workout_session = WorkoutExerciseSession.objects.create(
-        content_type=exercise_content_type,
-        object_id=exercise_session.id,
-        workout_session=workout_session,
-        order=session_order or 0
-    )
+    if isinstance(workout_session, WorkoutTemplate):
+        exercise_workout_session = WorkoutTemplateExerciseItem.objects.create(
+            content_type=exercise_content_type,
+            object_id=exercise_session.id,
+            workout_template=workout_session,
+            order=session_order or 0
+        )
+    elif isinstance(workout_session, WorkoutSession):
+        exercise_workout_session = WorkoutExerciseSession.objects.create(
+            content_type=exercise_content_type,
+            object_id=exercise_session.id,
+            workout_session=workout_session,
+            order=session_order or 0
+        )
+
     exercise_workout_session.save()
     return exercise_workout_session
 
@@ -162,6 +178,8 @@ def add_new_exercise_sessions_to_workout_session(request, workout_session, exerc
             new_session = create_exercise_workout_session(request, workout_session, session)
             new_exercises.append(new_session)
     return new_exercises
+
+
 def remove_exercises_not_in_list(session_exercises: object, list_exercises: object) -> object:
     """
         Removes exercises from the workout or superset session that are not in the provided list of exercises.
@@ -218,3 +236,18 @@ def convert_str_time_to_interval_time(time: str) -> dict:
 def get_value_or_default(data: dict, key: str, default=0):
     value = data.get(key, default)
     return value if value != '' else default
+
+
+def serializer_exericses_for_session_or_template(exercises, exercise_serializer, superset_serializer):
+    """
+       Serialize a list of exercises based on their type (ExerciseSession or SupersetSession).
+       """
+    serialized_exercises = []
+    for exercise in exercises:
+        exercise_type = exercise.content_type.model
+        exercise_instance = exercise.content_object
+        if exercise_type == 'exercisesession':
+            serialized_exercises.append(exercise_serializer(exercise_instance).data)
+        elif exercise_type == 'supersetsession':
+            serialized_exercises.append(superset_serializer(exercise_instance).data)
+    return serialized_exercises

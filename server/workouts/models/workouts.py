@@ -14,37 +14,38 @@ class BaseWorkoutModel(models.Model):
     created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        abstract = True
+
 
 class WorkoutTemplate(BaseWorkoutModel):
     is_published = models.BooleanField(default=True)
-    exercises = models.ManyToManyField("WorkoutExerciseSession", related_name="template_exercises")
+    exercises = models.ManyToManyField("WorkoutTemplateExerciseItem", related_name="template_exercises")
 
     @staticmethod
     def create_workout_template(request, workout_name, exercises):
         from server.workouts.utils import create_exercise_sessions_for_workout
-
+        a = 5
         if not workout_name:
             raise ValidationError("Provide a name for your workout template")
         if len(exercises) == 0:
             raise ValidationError("Please add exercises to your workout template")
 
-        workout_session = WorkoutSession.objects.create(
+        workout_template = WorkoutTemplate.objects.create(
             name=workout_name,
             total_exercises=len(exercises),
-            # TODO: Move the total_set and total_weight volume to a signal
             total_sets=0,
-            total_weight_volume=0,
-            created_by=request.user.profile,
+            created_by=request.user.profile
 
         )
 
-        exercise_sessions = create_exercise_sessions_for_workout(request, workout_session, exercises)
+        exercise_sessions = create_exercise_sessions_for_workout(request, workout_template, exercises)
         if not exercise_sessions or len(exercise_sessions) == 0:
-            workout_session.delete()
+            workout_template.delete()
             raise ValidationError("Please add exercises to your workout template")
-        workout_session.exercises.add(*exercise_sessions)
-        workout_session.save()
-        return workout_session
+        workout_template.exercises.add(*exercise_sessions)
+        workout_template.save()
+        return workout_template
 
     @staticmethod
     def publish_template(request, workout_id):
@@ -103,26 +104,31 @@ class WorkoutSession(BaseWorkoutModel):
         return workout_session
 
 
-class WorkoutExerciseSession(models.Model):
+class BaseExerciseItemForWorkout(models.Model):
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
-    workout_session = models.ForeignKey(WorkoutSession, related_name='workout_exercises', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     edited_at = models.DateTimeField(auto_now=True)
-    # created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        abstract = True
         ordering = ['order']
 
     def __str__(self):
-        # exercise_name = ''
-        if self.content_type.model == 'supersetsession':
-            exercise_name = 'Superset'
-        else:
-            exercise_name = self.content_object.exercise.name
-        return f"Workout Exercise Session {self.id} ---- {exercise_name}"
+        exercise_name = self.content_object.exercise.name if self.content_type.model != 'supersetsession' else 'Superset'
+        return f"{self.__class__.__name__} {self.id} ---- {exercise_name}"
+
+
+class WorkoutExerciseSession(BaseExerciseItemForWorkout):
+    workout_session = models.ForeignKey(WorkoutSession, related_name='workout_exercises', on_delete=models.CASCADE)
+
+
+class WorkoutTemplateExerciseItem(BaseExerciseItemForWorkout):
+    workout_template = models.ForeignKey(
+        WorkoutTemplate, related_name='template_exercises', on_delete=models.CASCADE
+    )
 
 
 class WorkoutPlan(models.Model):
