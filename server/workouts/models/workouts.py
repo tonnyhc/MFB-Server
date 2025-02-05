@@ -24,8 +24,8 @@ class WorkoutTemplate(BaseWorkoutModel):
 
     @staticmethod
     def create_workout_template(request, workout_name, exercises):
+
         from server.workouts.utils import create_exercise_sessions_for_workout
-        a = 5
         if not workout_name:
             raise ValidationError("Provide a name for your workout template")
         if len(exercises) == 0:
@@ -38,7 +38,8 @@ class WorkoutTemplate(BaseWorkoutModel):
             created_by=request.user.profile
 
         )
-
+        workout_template_session = TemplateWorkoutSession.create(request, template_id=workout_template.id, workout_data=exercises)
+        a = 5
         exercise_sessions = create_exercise_sessions_for_workout(request, workout_template, exercises)
         if not exercise_sessions or len(exercise_sessions) == 0:
             workout_template.delete()
@@ -73,14 +74,16 @@ class WorkoutTemplate(BaseWorkoutModel):
 
 
 class WorkoutSession(BaseWorkoutModel):
+
     total_weight_volume = models.IntegerField()
+
     exercises = models.ManyToManyField(
         'WorkoutExerciseSession',
         related_name='workout_sessions'
     )
 
     @staticmethod
-    def create_session(request, workout_name, exercises):
+    def create_session(request, workout_name, exercises, workout_template=None):
         from server.workouts.utils import create_exercise_sessions_for_workout
 
         if not workout_name:
@@ -89,6 +92,7 @@ class WorkoutSession(BaseWorkoutModel):
             raise ValidationError("Please add exercises to your workout")
 
         workout_session = WorkoutSession.objects.create(
+            # workout_template=workout_template,
             name=workout_name,
             total_exercises=len(exercises),
             # TODO: Move the total_set and total_weight volume to a signal
@@ -97,10 +101,11 @@ class WorkoutSession(BaseWorkoutModel):
             created_by=request.user.profile,
 
         )
-
+        if not workout_session:
+            raise ValueError("Failed to create WorkoutSession!")
+        workout_session.save()
         exercise_sessions = create_exercise_sessions_for_workout(request, workout_session, exercises)
         workout_session.exercises.add(*exercise_sessions)
-        workout_session.save()
         return workout_session
 
 
@@ -198,3 +203,24 @@ class ActiveRoutine(models.Model):
 
     def __str__(self):
         return f"Active routine for {self.profile} created at {self.created_at}"
+
+class TemplateWorkoutSession(models.Model):
+    template = models.ForeignKey(WorkoutTemplate, on_delete=models.CASCADE)
+    workout_session = models.ForeignKey(WorkoutSession, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(Profile, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def create(request, template_id, workout_data):
+        try:
+            template = WorkoutTemplate.objects.get(pk=template_id)
+        except WorkoutTemplate.DoesNotExist:
+            raise WorkoutTemplate.DoesNotExist()
+        workout_session = WorkoutSession.create_session(request, template.name, workout_data, workout_template=template)
+        template_instance = TemplateWorkoutSession.objects.create(
+            template=template,
+            workout_session=workout_session,
+            created_by=request.user.profile
+        )
+        template_instance.save()
+        return template_instance

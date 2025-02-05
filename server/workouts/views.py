@@ -5,7 +5,8 @@ from rest_framework import generics as rest_generic_views, status, views
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, MuscleGroup, WorkoutTemplate
+from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, MuscleGroup, WorkoutTemplate, \
+    TemplateWorkoutSession
 from server.workouts.serializers import \
     WorkoutPlanCreationSerializer, WorkoutSessionDetailsSerializer, \
     BaseMuscleGroupSerializer, RoutinesListSerializer, \
@@ -62,6 +63,7 @@ class CreateWorkoutTemplateView(rest_generic_views.CreateAPIView):
 class WorkoutTemplateListView(rest_generic_views.ListAPIView):
     serializer_class = WorkoutTemplateListSerializer
     queryset = WorkoutTemplate.objects.all()
+
     def get(self, request, *args, **kwargs):
         workout_templates = self.get_queryset().filter(created_by=request.user.profile)
         serialized_workout_templates = self.serializer_class(workout_templates, many=True, context={'request': request})
@@ -85,13 +87,16 @@ class CreateWorkoutView(rest_generic_views.CreateAPIView):
     def post(self, request, *args, **kwargs):
         workout_name = request.data.get('name')
         exercises = request.data.get('exercises')
+        workout_template = None
+        if (request.data.get('workout_template')):
+            workout_template = WorkoutTemplate.objects.get(id=request.data.get('workout_template'))
         if not workout_name:
             return Response({'name': "Please provide a name for your workout!"}, status=status.HTTP_400_BAD_REQUEST)
         if not exercises:
             return Response({"exercises": "The workout must contain exercises!"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            workout = WorkoutSession.create_session(request, workout_name, exercises)
+            workout = WorkoutSession.create_session(request, workout_name, exercises, workout_template)
             return Response(self.details_serializer(workout).data, status=status.HTTP_200_OK)
         except ValidationError as e:
             return Response({"generic": str(e)}, status=status.HTTP_400_BAD_REQUEST)
