@@ -409,7 +409,8 @@ class ExerciseSession(models.Model):
             except Set.DoesNotExist:
                 return models.ObjectDoesNotExist
         exercise_session.notes = notes
-        return exercise_session.save()
+        exercise_session.save()
+        return exercise_session
 
     # added later
     @staticmethod

@@ -21,7 +21,6 @@ class BaseWorkoutModel(models.Model):
 class WorkoutTemplate(BaseWorkoutModel):
     is_published = models.BooleanField(default=True)
     exercises = models.ManyToManyField("WorkoutTemplateExerciseItem", related_name="template_exercises")
-
     @staticmethod
     def create_workout_template(request, workout_name, exercises):
 
@@ -39,7 +38,6 @@ class WorkoutTemplate(BaseWorkoutModel):
 
         )
         workout_template_session = TemplateWorkoutSession.create(request, template_id=workout_template.id, workout_data=exercises)
-        a = 5
         exercise_sessions = create_exercise_sessions_for_workout(request, workout_template, exercises)
         if not exercise_sessions or len(exercise_sessions) == 0:
             workout_template.delete()
@@ -107,6 +105,13 @@ class WorkoutSession(BaseWorkoutModel):
         exercise_sessions = create_exercise_sessions_for_workout(request, workout_session, exercises)
         workout_session.exercises.add(*exercise_sessions)
         return workout_session
+
+
+    def update_session_exercises(self, request, exercises):
+        from server.workouts.utils import create_exercise_sessions_for_workout, update_workout_session_exercises
+        a = 5
+        update_workout_session_exercises(request, self, exercises)
+        return self
 
 
 class BaseExerciseItemForWorkout(models.Model):

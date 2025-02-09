@@ -42,12 +42,6 @@ def create_exercise_sessions_for_workout(request, workout_session, exercise_sess
     return sessions
 
 
-def create_exercise_session_for_workout_template(request, workout_template, exercise_sessions):
-    sessions = []
-    for exercise_session in exercise_sessions:
-        pass
-
-
 def create_exercise_workout_session(request, workout_session, exercise_session):
     from server.workouts.models import ExerciseSession, WorkoutExerciseSession
     from django.contrib.contenttypes.models import ContentType
@@ -143,7 +137,9 @@ def calculate_superset_total_sets(superset_session):
 def update_workout_session_exercises(request, workout_session, exercises):
     from server.workouts.models import ExerciseSession, SupersetSession
     session_instance_exercises = workout_session.exercises.all()
+    # final_exercises_test = remove_exercises_not_in_list_test(session_instance_exercises, exercises)
     final_exercises = remove_exercises_not_in_list(session_instance_exercises, exercises)
+
     exercises_to_add = add_new_exercise_sessions_to_workout_session(request, workout_session, exercises)
     # # TODO: Implement edit exercise session
     for exercise_session in final_exercises:
@@ -154,8 +150,10 @@ def update_workout_session_exercises(request, workout_session, exercises):
             continue
 
         ExerciseSession.edit_session(request, exercise_session, exercise_data)
-    workout_session.add_exercise_sessions(exercises_to_add)
+    # workout_session.add_exercise_sessions(exercises_to_add)
+    workout_session.exercises.add(*exercises_to_add)
     workout_session.save()
+
     return final_exercises
 
 
@@ -171,7 +169,7 @@ def add_new_exercise_sessions_to_workout_session(request, workout_session, exerc
             continue
         try:
             if isinstance(session_id, int):
-                ExerciseSession.objects.get(pk=session['id'])
+                ExerciseSession.objects.get(pk=session_id)
             else:
                 raise ExerciseSession.DoesNotExist
         except ExerciseSession.DoesNotExist:
@@ -180,7 +178,7 @@ def add_new_exercise_sessions_to_workout_session(request, workout_session, exerc
     return new_exercises
 
 
-def remove_exercises_not_in_list(session_exercises: object, list_exercises: object) -> object:
+def remove_exercises_not_in_list_old(session_exercises: object, list_exercises: object) -> object:
     """
         Removes exercises from the workout or superset session that are not in the provided list of exercises.
 
@@ -194,12 +192,17 @@ def remove_exercises_not_in_list(session_exercises: object, list_exercises: obje
     # Extract exercise IDs from the list_exercises
     list_exercise_ids = {exercise_session.get('id') for exercise_session in list_exercises}
 
-    # Identify exercises to be removed
     exercises_to_remove = [
         exercise for exercise in session_exercises
-        if (hasattr(exercise, 'content_object') and exercise.content_object.pk not in list_exercise_ids) or
-           (not hasattr(exercise, 'content_object') and exercise.pk not in list_exercise_ids)
+        if (getattr(exercise.content_object, 'pk', exercise.pk) not in list_exercise_ids)
     ]
+
+    # Identify exercises to be removed
+    # exercises_to_remove = [
+    #     exercise for exercise in session_exercises
+    #     if (hasattr(exercise, 'content_object') and exercise.content_object.pk not in list_exercise_ids) or
+    #        (not hasattr(exercise, 'content_object') and exercise.pk not in list_exercise_ids)
+    # ]
 
     # Bulk delete exercises that are not in the new list
     if exercises_to_remove:
@@ -207,6 +210,16 @@ def remove_exercises_not_in_list(session_exercises: object, list_exercises: obje
         session_exercises.filter(id__in=ids_to_remove).delete()
 
     return session_exercises
+
+
+def remove_exercises_not_in_list(session_exercises: object, list_exercises: object) -> object:
+    list_exercise_ids = {exercise_session.get('id') for exercise_session in list_exercises}
+    session_exercise_ids = {exercise_session.content_object.pk for exercise_session in session_exercises}
+    for session_exercise_id in session_exercise_ids:
+        if session_exercise_id not in list_exercise_ids:
+            session_exercises.filter(id=session_exercise_id).delete()
+    return session_exercises
+
 
 
 def convert_str_to_float(value):

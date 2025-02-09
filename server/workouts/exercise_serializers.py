@@ -54,6 +54,7 @@ class ExerciseSessionDetailsSerializer(BaseExerciseSessionSerializer):
         from server.workouts.models import Rest, Set, Interval
         exercise_session_items = obj.exercisesessionitem_set.all()
         final_list = []
+        print(obj)
         for instance in exercise_session_items:
             model_class = instance.content_type.model_class()
             if model_class == Rest:

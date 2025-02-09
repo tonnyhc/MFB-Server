@@ -80,6 +80,19 @@ class WorkoutTemplateDetailsView(rest_generic_views.RetrieveAPIView):
     #     return Response(serializer(queryset, many=True).data, status=status.HTTP_200_OK)
 
 
+class WorkoutTemplateStartWorkout(rest_generic_views.RetrieveAPIView):
+    queryset = WorkoutTemplate.objects.all()
+    serializer_class = WorkoutSessionDetailsSerializer
+
+    def get(self, request, *args, **kwargs):
+        template_id = kwargs.get('pk')
+        template = self.get_queryset().filter(id=template_id).get()
+        template_workout_session = TemplateWorkoutSession.objects.get(template=template)
+        workout_session = template_workout_session.workout_session
+        serialized_workout_session = self.serializer_class(workout_session)
+        return Response(serialized_workout_session.data, status=status.HTTP_200_OK)
+
+
 class CreateWorkoutView(rest_generic_views.CreateAPIView):
     serializer_class = BaseWorkoutSessionSerializer
     details_serializer = WorkoutSessionDetailsSerializer
@@ -144,6 +157,21 @@ class WorkoutSessionDeleteView(rest_generic_views.DestroyAPIView):
             return Response("You can only delete your own workouts!", status=status.HTTP_401_UNAUTHORIZED)
         workout.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class WorkoutSessionFinishView(views.APIView):
+    def post(self, request, *args, **kwargs):
+        workout_id = kwargs.get('id')
+        exercises = request.data.get('exercises')
+        if not exercises:
+            return Response({"exercises": "The workout must contain exercises!"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            session = WorkoutSession.objects.get(pk=workout_id)
+            session.update_session_exercises(request, exercises)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except WorkoutSession.DoesNotExist:
+            return Response("Workout session does not exist.", status=status.HTTP_404_NOT_FOUND)
+
 
 
 class WorkoutSearchView(rest_generic_views.ListAPIView):

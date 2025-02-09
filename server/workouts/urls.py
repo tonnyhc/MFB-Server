@@ -7,7 +7,7 @@ from server.workouts.views import CreateRoutineView, RoutinesListView, \
     WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, CreateWorkoutView, \
     MuscleGroupsListView, WorkoutSearchView, WorkoutSessionEditView, DeleteWorkoutPlanView, WorkoutSessionDeleteView, \
     AddWorkoutToRoutineView, WorkoutsListView, CreateWorkoutTemplateView, WorkoutTemplateListView, \
-    WorkoutTemplateDetailsView
+    WorkoutTemplateDetailsView, WorkoutTemplateStartWorkout, WorkoutSessionFinishView
 
 urlpatterns = [
     path('routine/', include([
@@ -36,12 +36,14 @@ urlpatterns = [
     path('workout/', include([
         path('list/', WorkoutsListView.as_view(), name='workout list view'),
         path('session/<int:id>/', WorkoutSessionDetailsView.as_view(), name='workout session details'),
+        path('session/finish/<int:id>/', WorkoutSessionFinishView.as_view(), name='workout session finish'),
         path('session/edit/<int:pk>/', WorkoutSessionEditView.as_view(), name='workout session edit '),
         path('session/delete/<int:pk>/', WorkoutSessionDeleteView.as_view(), name='workout session delete'),
         path('create/', CreateWorkoutView.as_view(), name='create workout'),
         path('template/create/', CreateWorkoutTemplateView.as_view(), name='create workout template'),
         path('template/list/', WorkoutTemplateListView.as_view(), name='workout template list view'),
         path('template/<int:pk>/', WorkoutTemplateDetailsView.as_view(), name='workout template details view'),
+        path('template/start-workout/<int:pk>/', WorkoutTemplateStartWorkout.as_view(), name='workout template start workout'),
         path('search/', WorkoutSearchView.as_view(), name='search workout'),
         # path('publish/<int:id>', publish_workout, name='publish workout')
     ])),
