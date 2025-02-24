@@ -7,7 +7,7 @@ from server.workouts.views import CreateRoutineView, RoutinesListView, \
     WorkoutPlanDetailsView, publish_workout, WorkoutSessionDetailsView, CreateWorkoutView, \
     MuscleGroupsListView, WorkoutSearchView, WorkoutSessionEditView, DeleteWorkoutPlanView, WorkoutSessionDeleteView, \
     AddWorkoutToRoutineView, WorkoutsListView, CreateWorkoutTemplateView, WorkoutTemplateListView, \
-    WorkoutTemplateDetailsView, WorkoutTemplateStartWorkout, WorkoutSessionFinishView
+    WorkoutTemplateDetailsView, WorkoutTemplateStartWorkout, WorkoutSessionFinishView, GetScheduledWorkoutForToday
 
 urlpatterns = [
     path('routine/', include([
@@ -15,7 +15,8 @@ urlpatterns = [
         path('create/', CreateRoutineView.as_view(), name='create workout plan view'),
         path('delete/<int:id>/', DeleteWorkoutPlanView.as_view(), name='delete workout plan view'),
         path('details/<int:id>/', WorkoutPlanDetailsView.as_view(), name='workout plan details'),
-        path('add-workout/<int:id>/', AddWorkoutToRoutineView.as_view(), name='add workout to routine')
+        path('add-workout/<int:id>/', AddWorkoutToRoutineView.as_view(), name='add workout to routine'),
+        path('get-today-workout/', GetScheduledWorkoutForToday.as_view(), name='get workout for today'),
     ]
     )),
     path('exercise/', include([

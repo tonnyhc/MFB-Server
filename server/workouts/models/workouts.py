@@ -21,6 +21,7 @@ class BaseWorkoutModel(models.Model):
 class WorkoutTemplate(BaseWorkoutModel):
     is_published = models.BooleanField(default=True)
     exercises = models.ManyToManyField("WorkoutTemplateExerciseItem", related_name="template_exercises")
+
     @staticmethod
     def create_workout_template(request, workout_name, exercises):
 
@@ -37,7 +38,8 @@ class WorkoutTemplate(BaseWorkoutModel):
             created_by=request.user.profile
 
         )
-        workout_template_session = TemplateWorkoutSession.create(request, template_id=workout_template.id, workout_data=exercises)
+        workout_template_session = TemplateWorkoutSession.create(request, template_id=workout_template.id,
+                                                                 workout_data=exercises)
         exercise_sessions = create_exercise_sessions_for_workout(request, workout_template, exercises)
         if not exercise_sessions or len(exercise_sessions) == 0:
             workout_template.delete()
@@ -72,7 +74,6 @@ class WorkoutTemplate(BaseWorkoutModel):
 
 
 class WorkoutSession(BaseWorkoutModel):
-
     total_weight_volume = models.IntegerField()
 
     exercises = models.ManyToManyField(
@@ -105,7 +106,6 @@ class WorkoutSession(BaseWorkoutModel):
         exercise_sessions = create_exercise_sessions_for_workout(request, workout_session, exercises)
         workout_session.exercises.add(*exercise_sessions)
         return workout_session
-
 
     def update_session_exercises(self, request, exercises):
         from server.workouts.utils import create_exercise_sessions_for_workout, update_workout_session_exercises
@@ -192,6 +192,57 @@ class WorkoutPlan(models.Model):
             raise e
 
 
+class Routine(models.Model):
+    MAX_LEN_NAME = 100
+    name = models.CharField(max_length=MAX_LEN_NAME)
+    workouts = models.ManyToManyField("WorkoutTemplate", through="RoutineWorkout", related_name="routine")
+
+    @staticmethod
+    def create_routine(request, routine_name: str, workouts: list[dict]):
+        with transaction.atomic():
+            # Create the routine
+            routine = Routine.objects.create(name=routine_name)
+
+            for workout_data in workouts:
+                day = workout_data["day"]
+                workout_info = workout_data["workout"]
+
+                # Check if workout already exists
+                workout_id = workout_info.get("id")
+                if workout_id:
+                    try:
+                        workout_instance = WorkoutTemplate.objects.get(id=workout_id)
+                    except WorkoutTemplate.DoesNotExist:
+                        workout_instance = None
+                else:
+                    workout_instance = None
+
+                # Create workout if not found
+                if not workout_instance:
+                    workout_name = workout_info["name"]
+                    exercises = workout_info["exercises"]
+                    workout_instance = WorkoutTemplate.create_workout_template(request, workout_name, exercises)
+
+                # Link workout to routine with the correct day
+                RoutineWorkout.objects.create(routine=routine, workout=workout_instance, day_of_week=day)
+
+            return routine  # Return the created routine
+
+
+class RoutineWorkout(models.Model):
+    routine = models.ForeignKey(Routine, on_delete=models.CASCADE)
+    workout = models.ForeignKey(WorkoutTemplate, on_delete=models.CASCADE)
+    day_of_week = models.CharField(max_length=3, choices=[
+        ("mon", "Monday"),
+        ("tue", "Tuesday"),
+        ("wed", "Wednesday"),
+        ("thu", "Thursday"),
+        ("fri", "Friday"),
+        ("sat", "Saturday"),
+        ("sun", "Sunday"),
+    ])
+
+
 class ActiveRoutine(models.Model):
     profile = models.ForeignKey(
         Profile,
@@ -208,6 +259,7 @@ class ActiveRoutine(models.Model):
 
     def __str__(self):
         return f"Active routine for {self.profile} created at {self.created_at}"
+
 
 class TemplateWorkoutSession(models.Model):
     template = models.ForeignKey(WorkoutTemplate, on_delete=models.CASCADE)

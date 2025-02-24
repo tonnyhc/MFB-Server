@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 
 from django.core.exceptions import ValidationError
 from rest_framework import generics as rest_generic_views, status, views
@@ -6,7 +7,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from server.workouts.models import WorkoutPlan, Exercise, WorkoutSession, MuscleGroup, WorkoutTemplate, \
-    TemplateWorkoutSession
+    TemplateWorkoutSession, Routine, RoutineWorkout
 from server.workouts.serializers import \
     WorkoutPlanCreationSerializer, WorkoutSessionDetailsSerializer, \
     BaseMuscleGroupSerializer, RoutinesListSerializer, \
@@ -173,7 +174,6 @@ class WorkoutSessionFinishView(views.APIView):
             return Response("Workout session does not exist.", status=status.HTTP_404_NOT_FOUND)
 
 
-
 class WorkoutSearchView(rest_generic_views.ListAPIView):
     queryset = WorkoutSession.objects.all()
     serializer_class = WorkoutSessionDetailsSerializer
@@ -204,7 +204,7 @@ class WorkoutPlanDetailsView(rest_generic_views.RetrieveAPIView):
         return Response(serialized_query.data, status=status.HTTP_200_OK)
 
 
-class CreateRoutineView(rest_generic_views.CreateAPIView):
+class CreateRoutineViewOld(rest_generic_views.CreateAPIView):
     queryset = WorkoutPlan
     serializer_class = WorkoutPlanCreationSerializer
 
@@ -225,6 +225,29 @@ class CreateRoutineView(rest_generic_views.CreateAPIView):
         except ValidationError as error:
             return Response(error.message,
                             status=status.HTTP_400_BAD_REQUEST)
+
+
+class CreateRoutineView(rest_generic_views.CreateAPIView):
+    def post(self, request, *args, **kwargs):
+        routine_name = request.data.get('routineName')
+        workouts = request.data.get('workouts')
+        Routine.create_routine(request, routine_name, workouts)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GetScheduledWorkoutForToday(rest_generic_views.RetrieveAPIView):
+    serializer_class = WorkoutTemplateSerializer
+    def get(self, request, *args, **kwargs):
+        # Get today's day abbreviation (e.g., "mon", "tue", etc.)
+        today = datetime.today().strftime("%a").lower()  # Returns "mon", "tue", etc.
+
+        routine_workout = RoutineWorkout.objects.filter(
+            routine__workouts__created_by=request.user.profile,
+            day_of_week=today
+        ).select_related('workout').first()
+        if not routine_workout:
+            return Response({"message": "No scheduled workout for today"}, status=404)
+        return Response(self.serializer_class(routine_workout.workout).data, status=status.HTTP_200_OK)
 
 
 class AddWorkoutToRoutineView(rest_generic_views.UpdateAPIView):
